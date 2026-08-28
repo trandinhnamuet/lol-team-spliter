@@ -65,11 +65,11 @@
 body {
   font-family: var(--font-sans);
   color: var(--color-gold-100);
-  background-color: var(--color-abyss-950);
+  background-color: #061224;
   background-image:
-    radial-gradient(1100px 560px at 50% -120px, rgba(0, 90, 130, 0.32), transparent 70%),
-    radial-gradient(800px 480px at 88% 108%, rgba(120, 90, 40, 0.14), transparent 65%),
-    radial-gradient(640px 420px at 6% 102%, rgba(3, 151, 171, 0.1), transparent 60%);
+    radial-gradient(1100px 560px at 50% -120px, rgba(0, 108, 155, 0.42), transparent 70%),
+    radial-gradient(800px 480px at 88% 108%, rgba(130, 98, 45, 0.2), transparent 65%),
+    radial-gradient(640px 420px at 6% 102%, rgba(3, 151, 171, 0.16), transparent 60%);
   background-attachment: fixed;
   min-height: 100vh;
 }
@@ -101,7 +101,7 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: 0.07;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 2 52 16v28L28 58 4 44V16zM28 60 52 74v28L28 116 4 102V74z' fill='none' stroke='%23c8aa6e' stroke-width='1'/%3E%3C/svg%3E");
   background-size: 56px 97px;
   -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 75%);
@@ -154,7 +154,7 @@ body {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 38%, transparent 60%, rgba(1, 10, 19, 0.5) 100%);
+  background: radial-gradient(ellipse at 50% 38%, transparent 65%, rgba(1, 10, 19, 0.35) 100%);
 }
 
 /* ---------- Header ---------- */
