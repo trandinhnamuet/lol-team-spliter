@@ -123,6 +123,11 @@ export async function checkKeyStatus(apiKey: string, platform: string): Promise<
   }
 }
 
+/** Chuẩn hoá Riot ID: bỏ khoảng trắng thừa quanh dấu # và hai đầu chuỗi. */
+export function normalizeRiotId(input: string): string {
+  return input.trim().replace(/\s*#\s*/g, "#");
+}
+
 /** Tách "Tên#TAG" thành gameName/tagLine. Trả null nếu sai định dạng. */
 export function parseRiotId(input: string): { gameName: string; tagLine: string } | null {
   const trimmed = input.trim();

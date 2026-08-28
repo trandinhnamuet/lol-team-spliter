@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import { rankLabel } from "@/lib/elo";
 import HexCorners from "@/components/hex/HexCorners";
@@ -45,8 +46,52 @@ function PlayerRow({ p, index }: { p: ResolvedPlayer; index: number }) {
   );
 }
 
-export default function TeamResults({ result }: { result: TeamResult }) {
+export default function TeamResults({
+  result,
+  failed = [],
+  allowSave = true,
+}: {
+  result: TeamResult;
+  failed?: ResolvedPlayer[];
+  allowSave?: boolean;
+}) {
   const maxElo = Math.max(...result.teams.map((t) => t.totalElo), 1);
+  const validCount =
+    result.teams.reduce((s, t) => s + t.players.length + (t.reserve ? 1 : 0), 0) +
+    result.bench.length;
+
+  const [saving, setSaving] = useState(false);
+  const [savedUrl, setSavedUrl] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch("/api/results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result, failed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSaveError(data.error ?? "Không lưu được kết quả");
+        return;
+      }
+      setSavedUrl(`${window.location.origin}/result/${data.id}`);
+    } catch {
+      setSaveError("Lỗi kết nối server");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function copySavedUrl() {
+    await navigator.clipboard.writeText(savedUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   return (
     <div className="hex-reveal space-y-6 pt-2">
@@ -57,9 +102,36 @@ export default function TeamResults({ result }: { result: TeamResult }) {
         <span className="line" aria-hidden="true" />
       </div>
       <p className="hex-reveal text-center text-sm text-steel-100" style={{ animationDelay: "200ms" }}>
+        <span className="hex-sigma text-base font-bold">{validCount}</span> người hợp lệ
+        <span className="mx-2 text-gold-600">◆</span>
         Chênh lệch elo giữa các đội:{" "}
         <span className="hex-sigma text-base font-bold">{result.spread}</span>
       </p>
+
+      {allowSave && (
+        <div className="hex-reveal flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: "260ms" }}>
+          {savedUrl ? (
+            <>
+              <code className="hex-code max-w-full truncate">{savedUrl}</code>
+              <button onClick={copySavedUrl} className="hex-btn hex-btn-ghost">
+                {copied ? <span className="text-magic-300">✓ Đã copy</span> : "Copy link"}
+              </button>
+            </>
+          ) : (
+            <button onClick={save} disabled={saving} className="hex-btn hex-btn-ghost">
+              {saving ? (
+                <>
+                  <span className="hex-spinner" style={{ "--size": "12px" } as CSSProperties} />
+                  Đang lưu…
+                </>
+              ) : (
+                "⬡ Lưu kết quả — tạo link xem lại"
+              )}
+            </button>
+          )}
+          {saveError && <span className="text-xs text-blood-300">{saveError}</span>}
+        </div>
+      )}
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {result.teams.map((team, i) => (

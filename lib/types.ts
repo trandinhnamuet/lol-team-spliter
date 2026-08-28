@@ -69,3 +69,11 @@ export interface TournamentEvent {
 }
 
 export type KeyStatus = "valid" | "invalid" | "missing" | "error";
+
+/** Kết quả chia team đã lưu để xem lại qua link /result/[id]. */
+export interface SavedResult {
+  id: string;
+  createdAt: string;
+  result: TeamResult;
+  failed: ResolvedPlayer[];
+}

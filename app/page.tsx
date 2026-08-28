@@ -4,17 +4,17 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
+import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
 import type { ResolvedPlayer, TeamResult } from "@/lib/types";
 
 type Tab = "paste" | "event";
 
-interface SplitResponse {
-  players?: ResolvedPlayer[];
-  failed?: ResolvedPlayer[];
-  result?: TeamResult;
-  error?: string;
+/** Chuẩn hoá phía client cho khớp với server: bỏ khoảng trắng quanh dấu #. */
+function normalizeLine(s: string): string {
+  return s.trim().replace(/\s*#\s*/g, "#");
 }
 
 export default function HomePage() {
@@ -25,6 +25,7 @@ export default function HomePage() {
   const [rawList, setRawList] = useState("");
   const [teamSize, setTeamSize] = useState("5");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<SplitProgress | null>(null);
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
   const [result, setResult] = useState<TeamResult | null>(null);
@@ -38,19 +39,18 @@ export default function HomePage() {
 
   async function split() {
     setLoading(true);
+    setProgress({ done: 0, total: 0 });
     setError("");
     setResult(null);
     setFailed([]);
     try {
-      const riotIds = rawList.split("\n").map((l) => l.trim()).filter(Boolean);
-      const res = await fetch("/api/split", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ riotIds, teamSize: parseTeamSize(teamSize) ?? 5 }),
-      });
-      const data = (await res.json()) as SplitResponse;
-      if (!res.ok) {
-        setError(data.error ?? "Có lỗi xảy ra");
+      const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
+      const data = await splitWithProgress(
+        { riotIds, teamSize: parseTeamSize(teamSize) ?? 5 },
+        setProgress
+      );
+      if (data.error) {
+        setError(data.error);
         setFailed((data.players ?? []).filter((p) => !p.ok));
         return;
       }
@@ -60,6 +60,7 @@ export default function HomePage() {
       setError("Lỗi kết nối server");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -149,6 +150,7 @@ export default function HomePage() {
           {parseTeamSize(teamSize) === null && (
             <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
           )}
+          {loading && progress && <SplitProgressBar progress={progress} />}
 
           {error && <p className="hex-reveal text-sm text-blood-300">{error}</p>}
           {failed.length > 0 && (
@@ -165,7 +167,7 @@ export default function HomePage() {
               </ul>
             </div>
           )}
-          {result && <TeamResults result={result} />}
+          {result && <TeamResults result={result} failed={failed} />}
         </div>
       )}
 

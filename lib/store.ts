@@ -1,11 +1,13 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { defaultEloMap } from "./elo";
-import type { AppConfig, TournamentEvent } from "./types";
+import type { AppConfig, ResolvedPlayer, SavedResult, TeamResult, TournamentEvent } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const EVENTS_FILE = path.join(DATA_DIR, "events.json");
+const RESULTS_FILE = path.join(DATA_DIR, "results.json");
+const MAX_SAVED_RESULTS = 200;
 
 async function ensureDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -74,6 +76,25 @@ export async function createEvent(name: string): Promise<TournamentEvent> {
   events.push(event);
   await writeJson(EVENTS_FILE, events);
   return event;
+}
+
+export async function saveResult(result: TeamResult, failed: ResolvedPlayer[]): Promise<SavedResult> {
+  const results = await readJson<SavedResult[]>(RESULTS_FILE, []);
+  const saved: SavedResult = {
+    id: crypto.randomUUID().slice(0, 8),
+    createdAt: new Date().toISOString(),
+    result,
+    failed,
+  };
+  results.push(saved);
+  // giữ tối đa MAX_SAVED_RESULTS bản ghi mới nhất
+  await writeJson(RESULTS_FILE, results.slice(-MAX_SAVED_RESULTS));
+  return saved;
+}
+
+export async function getResult(id: string): Promise<SavedResult | null> {
+  const results = await readJson<SavedResult[]>(RESULTS_FILE, []);
+  return results.find((r) => r.id === id) ?? null;
 }
 
 export async function updateEvent(

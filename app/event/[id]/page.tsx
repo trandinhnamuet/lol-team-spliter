@@ -3,8 +3,10 @@
 import { use, useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
+import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
 import type { ResolvedPlayer, TeamResult, TournamentEvent } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,6 +16,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [copied, setCopied] = useState(false);
   const [teamSize, setTeamSize] = useState("5");
   const [splitting, setSplitting] = useState(false);
+  const [progress, setProgress] = useState<SplitProgress | null>(null);
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
   const [result, setResult] = useState<TeamResult | null>(null);
@@ -70,26 +73,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
 
   async function split() {
     setSplitting(true);
+    setProgress({ done: 0, total: 0 });
     setError("");
     setResult(null);
     setFailed([]);
     try {
-      const res = await fetch("/api/split", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: id, teamSize: parseTeamSize(teamSize) ?? 5 }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Có lỗi xảy ra");
+      const data = await splitWithProgress(
+        { eventId: id, teamSize: parseTeamSize(teamSize) ?? 5 },
+        setProgress
+      );
+      if (data.error) {
+        setError(data.error);
+        setFailed((data.players ?? []).filter((p) => !p.ok));
         return;
       }
-      setResult(data.result);
+      setResult(data.result ?? null);
       setFailed(data.failed ?? []);
     } catch {
       setError("Lỗi kết nối server");
     } finally {
       setSplitting(false);
+      setProgress(null);
     }
   }
 
@@ -165,6 +169,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {parseTeamSize(teamSize) === null && (
           <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
         )}
+        {splitting && progress && <SplitProgressBar progress={progress} />}
 
         {event.players.length === 0 ? (
           <p className="text-sm text-steel-100">Chưa có ai đăng ký.</p>
@@ -204,7 +209,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </ul>
         </div>
       )}
-      {result && <TeamResults result={result} />}
+      {result && <TeamResults result={result} failed={failed} />}
     </div>
   );
 }
