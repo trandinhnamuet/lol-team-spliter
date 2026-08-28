@@ -1,69 +1,200 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import type { CSSProperties } from "react";
+import HexCorners from "@/components/hex/HexCorners";
+import TeamResults from "@/components/TeamResults";
+import type { ResolvedPlayer, TeamResult } from "@/lib/types";
+
+type Tab = "paste" | "event";
+
+interface SplitResponse {
+  players?: ResolvedPlayer[];
+  failed?: ResolvedPlayer[];
+  result?: TeamResult;
+  error?: string;
+}
+
+export default function HomePage() {
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>("paste");
+
+  // Tab 1: dán danh sách
+  const [rawList, setRawList] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
+  const [result, setResult] = useState<TeamResult | null>(null);
+
+  // Tab 2: tạo sự kiện
+  const [eventName, setEventName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [eventError, setEventError] = useState("");
+
+  const lineCount = rawList.split("\n").filter((l) => l.trim()).length;
+
+  async function split() {
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setFailed([]);
+    try {
+      const riotIds = rawList.split("\n").map((l) => l.trim()).filter(Boolean);
+      const res = await fetch("/api/split", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ riotIds }),
+      });
+      const data = (await res.json()) as SplitResponse;
+      if (!res.ok) {
+        setError(data.error ?? "Có lỗi xảy ra");
+        setFailed((data.players ?? []).filter((p) => !p.ok));
+        return;
+      }
+      setResult(data.result ?? null);
+      setFailed(data.failed ?? []);
+    } catch {
+      setError("Lỗi kết nối server");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createEvent() {
+    setCreating(true);
+    setEventError("");
+    try {
+      const res = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: eventName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEventError(data.error ?? "Không tạo được sự kiện");
+        return;
+      }
+      router.push(`/event/${data.event.id}`);
+    } catch {
+      setEventError("Lỗi kết nối server");
+      setCreating(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-7">
+      <div className="hex-reveal">
+        <p className="hex-kicker">Hextech Draft</p>
+        <h1 className="hex-h1 mt-1.5">Chia team cân bằng theo rank</h1>
+      </div>
+
+      <div className="hex-reveal flex gap-1 border-b border-gold-700/70" style={{ animationDelay: "80ms" }}>
+        {(
+          [
+            ["paste", "Dán danh sách"],
+            ["event", "Link đăng ký"],
+          ] as [Tab, string][]
+        ).map(([key, label]) => (
+          <button key={key} onClick={() => setTab(key)} className="hex-tab" data-active={tab === key}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "paste" && (
+        <div className="hex-reveal space-y-5" style={{ animationDelay: "120ms" }}>
+          <p className="max-w-3xl text-sm leading-relaxed text-steel-100">
+            Mỗi dòng một tên in-game theo định dạng{" "}
+            <code className="hex-code px-1.5 py-0.5 text-xs">Tên#TAG</code> (ví dụ:{" "}
+            <code className="hex-code px-1.5 py-0.5 text-xs">Faker#KR1</code>). Hệ thống tra rank
+            từng người qua Riot API rồi chia team 5 người sao cho tổng elo cân bằng nhất.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+          <div className="hex-panel relative p-1">
+            <HexCorners />
+            <textarea
+              value={rawList}
+              onChange={(e) => setRawList(e.target.value)}
+              rows={10}
+              placeholder={"NguoiChoi1#VN2\nNguoiChoi2#VN2\nNguoiChoi3#VN2\n..."}
+              className="hex-input border-0 bg-transparent p-3 font-mono text-sm shadow-none focus:shadow-none"
+              style={{ boxShadow: "none" }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <button onClick={split} disabled={loading || lineCount < 2} className="hex-btn hex-btn-magic">
+              {loading ? (
+                <>
+                  <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
+                  Đang tra rank &amp; chia team…
+                </>
+              ) : (
+                "⬡ Lấy rank & chia team"
+              )}
+            </button>
+            <span className="font-display text-[0.65rem] font-bold uppercase tracking-[0.2em] text-steel-100">
+              Summoners: <span className="text-gold-200">{lineCount}</span>
+            </span>
+          </div>
+
+          {error && <p className="hex-reveal text-sm text-blood-300">{error}</p>}
+          {failed.length > 0 && (
+            <div className="hex-alert hex-reveal p-4 text-sm">
+              <p className="mb-1.5 font-semibold text-blood-300">
+                Không xử lý được {failed.length} người (bị loại khỏi kết quả):
+              </p>
+              <ul className="list-inside list-disc space-y-0.5 text-gold-100/85">
+                {failed.map((p, i) => (
+                  <li key={i}>
+                    {p.input} — {p.error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {result && <TeamResults result={result} />}
         </div>
-      </main>
+      )}
+
+      {tab === "event" && (
+        <div className="hex-reveal max-w-xl space-y-5" style={{ animationDelay: "120ms" }}>
+          <p className="text-sm leading-relaxed text-steel-100">
+            Tạo một link đăng ký để gửi cho game thủ. Mỗi người tự vào link, nhập tên in-game
+            (được kiểm tra tồn tại qua Riot API) để đăng ký. Sau đó bạn quay lại trang sự kiện
+            để chia team từ danh sách đã đăng ký.
+          </p>
+          <div className="hex-panel relative p-5">
+            <HexCorners />
+            <label className="mb-2 block font-display text-[0.62rem] font-bold uppercase tracking-[0.2em] text-gold-200">
+              Tên giải đấu
+            </label>
+            <input
+              value={eventName}
+              onChange={(e) => setEventName(e.target.value)}
+              placeholder="Ví dụ: Giải nội bộ tháng 9"
+              className="hex-input px-3 py-2.5 text-sm"
+              onKeyDown={(e) => e.key === "Enter" && eventName.trim() && createEvent()}
+            />
+            <button
+              onClick={createEvent}
+              disabled={creating || !eventName.trim()}
+              className="hex-btn hex-btn-magic mt-4 w-full"
+            >
+              {creating ? (
+                <>
+                  <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
+                  Đang tạo…
+                </>
+              ) : (
+                "⬡ Tạo link đăng ký"
+              )}
+            </button>
+            {eventError && <p className="mt-3 text-sm text-blood-300">{eventError}</p>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

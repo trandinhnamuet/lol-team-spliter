@@ -1,26 +1,823 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================================
+   HEXTECH DESIGN SYSTEM — theo style guide client LMHT
+   Palette chính thức Riot:
+   Gold  #F0E6D2 #CDBE91 #C8AA6E #C89B3C #785A28 #463714 #32281E
+   Blue  #CDFAFA #0AC8B9 #0397AB #005A82 #0A323C #091428 #0A1428
+   Grey  #A09B8C #5B5A56 #3C3C41 #1E2328 #1E282D  Black #010A13
+   ============================================================ */
+
+@theme {
+  /* Gold — kim loại hextech */
+  --color-gold-100: #f0e6d2;
+  --color-gold-200: #cdbe91;
+  --color-gold-300: #c8aa6e;
+  --color-gold-400: #c89b3c;
+  --color-gold-600: #785a28;
+  --color-gold-700: #463714;
+  --color-gold-800: #32281e;
+
+  /* Blue — năng lượng ma thuật */
+  --color-magic-100: #cdfafa;
+  --color-magic-300: #0ac8b9;
+  --color-magic-500: #0397ab;
+  --color-magic-700: #005a82;
+  --color-magic-900: #0a323c;
+
+  /* Nền */
+  --color-abyss-800: #0a1428;
+  --color-abyss-900: #091428;
+  --color-abyss-950: #010a13;
+
+  /* Grey */
+  --color-steel-100: #a09b8c;
+  --color-steel-300: #5b5a56;
+  --color-steel-500: #3c3c41;
+  --color-steel-700: #1e2328;
+  --color-steel-800: #1e282d;
+
+  /* Trạng thái */
+  --color-blood-300: #ff7a8a;
+  --color-blood-400: #e84057;
+  --color-blood-600: #96222e;
+
+  /* Màu bậc rank */
+  --color-tier-iron: #a19d94;
+  --color-tier-bronze: #b97452;
+  --color-tier-silver: #a6b8c4;
+  --color-tier-gold: #e7c15a;
+  --color-tier-platinum: #4e9996;
+  --color-tier-emerald: #27ad60;
+  --color-tier-diamond: #6e8bd8;
+  --color-tier-master: #a35fd4;
+  --color-tier-grandmaster: #cd4545;
+  --color-tier-challenger: #f4c874;
+
+  /* Font */
+  --font-display: var(--font-cinzel), var(--font-cormorant), serif;
+  --font-heading: var(--font-cormorant), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ---------- Nền toàn trang ---------- */
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-gold-100);
+  background-color: var(--color-abyss-950);
+  background-image:
+    radial-gradient(1100px 560px at 50% -120px, rgba(0, 90, 130, 0.32), transparent 70%),
+    radial-gradient(800px 480px at 88% 108%, rgba(120, 90, 40, 0.14), transparent 65%),
+    radial-gradient(640px 420px at 6% 102%, rgba(3, 151, 171, 0.1), transparent 60%);
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+::selection {
+  background: rgba(200, 170, 110, 0.35);
+  color: #f0e6d2;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #463714 #010a13;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: #010a13;
+}
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #785a28, #463714);
+  border: 2px solid #010a13;
+}
+
+/* Lưới lục giác mờ phủ nền */
+.hex-gridlines {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 2 52 16v28L28 58 4 44V16zM28 60 52 74v28L28 116 4 102V74z' fill='none' stroke='%23c8aa6e' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 56px 97px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 75%);
+}
+
+/* Bụi ma thuật bay lên */
+.hex-dust {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hex-dust span {
+  position: absolute;
+  bottom: -8px;
+  width: 3px;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--color-magic-300);
+  box-shadow: 0 0 6px 1px rgba(10, 200, 185, 0.7);
+  opacity: 0;
+  animation: hex-rise linear infinite;
+}
+.hex-dust span:nth-child(3n) {
+  background: var(--color-gold-300);
+  box-shadow: 0 0 6px 1px rgba(200, 170, 110, 0.7);
+}
+@keyframes hex-rise {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.9;
+  }
+  90% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-105vh) translateX(24px);
+    opacity: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Viền tối 4 cạnh màn hình như client */
+.hex-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 38%, transparent 60%, rgba(1, 10, 19, 0.5) 100%);
+}
+
+/* ---------- Header ---------- */
+
+.hex-header {
+  position: relative;
+  background: linear-gradient(to bottom, rgba(9, 20, 40, 0.95), rgba(1, 10, 19, 0.88));
+  backdrop-filter: blur(10px);
+}
+.hex-header::before {
+  /* chỉ vàng mảnh sát mép trên như khung client */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #785a28 15%, #c8aa6e 50%, #785a28 85%, transparent);
+}
+.hex-header-edge {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #785a28 12%, #c8aa6e 50%, #785a28 88%, transparent);
+}
+.hex-header-edge::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3.5px;
+  width: 8px;
+  height: 8px;
+  transform: translateX(-50%) rotate(45deg);
+  background: linear-gradient(135deg, #f0e6d2, #c89b3c);
+  box-shadow: 0 0 8px 1px rgba(200, 170, 110, 0.8);
+}
+
+.hex-brand-glyph {
+  filter: drop-shadow(0 0 6px rgba(10, 200, 185, 0.55));
+  transition: filter 0.3s ease;
+}
+.group:hover .hex-brand-glyph {
+  filter: drop-shadow(0 0 10px rgba(10, 200, 185, 0.95));
+}
+.hex-brand-glyph .glyph-core {
+  animation: hex-core-pulse 2.6s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes hex-core-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+.hex-nav-link {
+  position: relative;
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-steel-100);
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.hex-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--color-gold-300), transparent);
+  transform: scaleX(0);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hex-nav-link:hover {
+  color: var(--color-gold-100);
+  text-shadow: 0 0 10px rgba(240, 230, 210, 0.35);
+}
+.hex-nav-link:hover::after,
+.hex-nav-link[data-active="true"]::after {
+  transform: scaleX(1);
+}
+.hex-nav-link[data-active="true"] {
+  color: var(--color-gold-100);
+}
+
+/* ---------- Tiêu đề trang / section ---------- */
+
+.hex-kicker {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--color-magic-300);
+  text-shadow: 0 0 12px rgba(10, 200, 185, 0.5);
+}
+
+.hex-h1 {
+  font-family: var(--font-heading);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.15;
+  background: linear-gradient(to bottom, #f0e6d2 20%, #c8aa6e 75%, #a17b33);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(200, 170, 110, 0.18));
+}
+
+.hex-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold-200);
+}
+.hex-section-title::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  rotate: 45deg;
+  background: linear-gradient(135deg, #f0e6d2, #c89b3c);
+  box-shadow: 0 0 6px rgba(200, 170, 110, 0.8);
+  flex-shrink: 0;
+}
+.hex-section-title::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, #785a28, rgba(70, 55, 20, 0.25), transparent);
+}
+
+/* ---------- Nút bấm kiểu client LMHT ---------- */
+
+.hex-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.7rem 1.6rem;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gold-200);
+  background: linear-gradient(to bottom, #1e2328 0%, #10171d 55%, #1e2328 100%);
+  border: 2px solid transparent;
+  border-image: linear-gradient(to bottom, #c8aa6e, #785a28 45%, #463714) 1;
+  cursor: pointer;
+  overflow: hidden;
+  transition: color 0.2s ease, box-shadow 0.25s ease, border-image 0.25s ease;
+  user-select: none;
+}
+/* Vệt sáng quét ngang khi hover */
+.hex-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(240, 230, 210, 0.22) 50%, transparent 65%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.hex-btn:hover:not(:disabled) {
+  color: var(--color-gold-100);
+  border-image: linear-gradient(to bottom, #f0e6d2, #c8aa6e 45%, #785a28) 1;
+  box-shadow:
+    0 0 12px rgba(200, 170, 110, 0.45),
+    inset 0 0 10px rgba(200, 170, 110, 0.12);
+  text-shadow: 0 0 8px rgba(240, 230, 210, 0.5);
+}
+.hex-btn:hover:not(:disabled)::after {
+  animation: hex-sheen 0.7s ease forwards;
+}
+.hex-btn:active:not(:disabled) {
+  color: var(--color-gold-600);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  text-shadow: none;
+}
+.hex-btn:disabled {
+  color: #7d7b73;
+  border-image: linear-gradient(to bottom, #5b5a56, #3c3c41) 1;
+  background: linear-gradient(to bottom, #1e2328, #151a1f);
+  cursor: not-allowed;
+}
+@keyframes hex-sheen {
+  to {
+    transform: translateX(130%);
+  }
+}
+
+/* CTA lớn — năng lượng hextech xanh */
+.hex-btn-magic {
+  padding: 0.9rem 2.4rem;
+  font-size: 0.8rem;
+  color: var(--color-gold-100);
+  border-image: linear-gradient(to bottom, #f0e6d2, #c8aa6e 40%, #785a28) 1;
+  box-shadow:
+    inset 0 0 16px rgba(10, 200, 185, 0.14),
+    0 0 14px rgba(10, 200, 185, 0.12);
+}
+.hex-btn-magic:hover:not(:disabled) {
+  box-shadow:
+    inset 0 0 22px rgba(10, 200, 185, 0.3),
+    0 0 22px rgba(10, 200, 185, 0.35),
+    0 0 10px rgba(200, 170, 110, 0.4);
+  animation: hex-magic-pulse 1.6s ease-in-out infinite;
+}
+@keyframes hex-magic-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 22px rgba(10, 200, 185, 0.3),
+      0 0 22px rgba(10, 200, 185, 0.35),
+      0 0 10px rgba(200, 170, 110, 0.4);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 30px rgba(10, 200, 185, 0.45),
+      0 0 30px rgba(10, 200, 185, 0.55),
+      0 0 12px rgba(200, 170, 110, 0.5);
+  }
+}
+
+/* Nút phụ mảnh */
+.hex-btn-ghost {
+  padding: 0.45rem 1rem;
+  font-size: 0.62rem;
+  background: rgba(30, 35, 40, 0.4);
+  border-width: 1px;
+  border-image: linear-gradient(to bottom, #785a28, #463714) 1;
+}
+.hex-btn-ghost:hover:not(:disabled) {
+  border-image: linear-gradient(to bottom, #c8aa6e, #785a28) 1;
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.3);
+}
+
+/* Nút nguy hiểm */
+.hex-btn-danger {
+  border-image: linear-gradient(to bottom, #96222e, #5c1520) 1;
+  color: var(--color-blood-300);
+}
+.hex-btn-danger:hover:not(:disabled) {
+  color: #ffd7dc;
+  border-image: linear-gradient(to bottom, #e84057, #96222e) 1;
+  box-shadow: 0 0 10px rgba(232, 64, 87, 0.4), inset 0 0 8px rgba(232, 64, 87, 0.15);
+  text-shadow: 0 0 8px rgba(232, 64, 87, 0.6);
+}
+
+/* ---------- Input ---------- */
+
+.hex-input {
+  width: 100%;
+  background: rgba(1, 10, 19, 0.85);
+  border: 1px solid #785a28;
+  color: var(--color-gold-100);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  caret-color: var(--color-magic-300);
+}
+.hex-input::placeholder {
+  color: var(--color-steel-300);
+}
+.hex-input:hover {
+  border-color: #a1823f;
+}
+.hex-input:focus {
+  outline: none;
+  border-color: var(--color-gold-300);
+  box-shadow:
+    0 0 0 1px rgba(200, 170, 110, 0.35),
+    0 0 12px rgba(200, 170, 110, 0.22),
+    inset 0 0 8px rgba(1, 10, 19, 0.9);
+}
+.hex-input:disabled {
+  opacity: 0.5;
+}
+input[type="number"].hex-input::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+/* ---------- Panel / khung ---------- */
+
+.hex-panel {
+  position: relative;
+  background: linear-gradient(160deg, rgba(10, 20, 40, 0.9), rgba(1, 10, 19, 0.94));
+  border: 1px solid #463714;
+  box-shadow:
+    inset 0 0 26px rgba(1, 10, 19, 0.85),
+    0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* 4 góc kim loại — gắn qua component HexCorners */
+.hex-corner {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-color: #c8aa6e;
+  border-style: solid;
+  border-width: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(200, 170, 110, 0.55));
+}
+.hex-corner-tl {
+  top: -2px;
+  left: -2px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.hex-corner-tr {
+  top: -2px;
+  right: -2px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.hex-corner-bl {
+  bottom: -2px;
+  left: -2px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+.hex-corner-br {
+  bottom: -2px;
+  right: -2px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+
+/* Card đội — hover sáng lên như ô loot trong client */
+.hex-team-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.hex-team-card:hover {
+  transform: translateY(-3px);
+  border-color: #c8aa6e;
+  box-shadow:
+    inset 0 0 26px rgba(1, 10, 19, 0.85),
+    0 0 20px rgba(200, 170, 110, 0.22),
+    0 10px 26px rgba(0, 0, 0, 0.55);
+}
+
+/* Hàng người chơi */
+.hex-player-row {
+  position: relative;
+  transition: background-color 0.18s ease, padding-left 0.18s ease;
+}
+.hex-player-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 2px;
+  background: var(--tier-color, var(--color-gold-300));
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  box-shadow: 0 0 6px var(--tier-color, var(--color-gold-300));
+}
+.hex-player-row:hover {
+  background: rgba(200, 170, 110, 0.07);
+  padding-left: 0.5rem;
+}
+.hex-player-row:hover::before {
+  opacity: 1;
+}
+
+/* ---------- Badge rank (hình lục giác dẹt) ---------- */
+
+.hex-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.16rem 0.85rem;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--tier-color, var(--color-steel-100));
+  background: color-mix(in srgb, var(--tier-color, #5b5a56) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tier-color, #5b5a56) 45%, transparent);
+  clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 9px 100%, 0 50%);
+}
+
+/* ---------- Ngăn cách trang trí ---------- */
+
+.hex-divider {
+  position: relative;
+  height: 1px;
+  margin: 1.4rem 0;
+  background: linear-gradient(to right, transparent, #785a28 18%, #c8aa6e 50%, #785a28 82%, transparent);
+}
+.hex-divider::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: #010a13;
+  border: 1px solid #c8aa6e;
+  box-shadow: 0 0 8px rgba(200, 170, 110, 0.7);
+}
+
+/* Banner kết quả — 2 vạch sáng mở ra từ giữa */
+.hex-result-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  text-align: center;
+}
+.hex-result-banner .line {
+  flex: 1;
+  height: 2px;
+  max-width: 220px;
+  background: linear-gradient(to right, transparent, #c8aa6e);
+  transform-origin: right;
+  animation: hex-line-grow 0.7s cubic-bezier(0.16, 1, 0.3, 1) both 0.15s;
+}
+.hex-result-banner .line:last-child {
+  background: linear-gradient(to left, transparent, #c8aa6e);
+  transform-origin: left;
+}
+.hex-result-banner h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-gold-100);
+  text-shadow: 0 0 18px rgba(200, 170, 110, 0.55);
+  animation: hex-title-glow 2.8s ease-in-out infinite;
+}
+@keyframes hex-line-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes hex-title-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 18px rgba(200, 170, 110, 0.45);
+  }
+  50% {
+    text-shadow: 0 0 26px rgba(200, 170, 110, 0.85), 0 0 44px rgba(10, 200, 185, 0.3);
+  }
+}
+
+/* ---------- Thanh elo ---------- */
+
+.hex-elo-track {
+  height: 5px;
+  background: rgba(30, 35, 40, 0.9);
+  border: 1px solid rgba(70, 55, 20, 0.7);
+  overflow: hidden;
+}
+.hex-elo-fill {
+  height: 100%;
+  background: linear-gradient(to right, #0397ab, #0ac8b9 55%, #c8aa6e);
+  box-shadow: 0 0 8px rgba(10, 200, 185, 0.55);
+  transform-origin: left;
+  animation: hex-bar-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both 0.35s;
+}
+@keyframes hex-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* ---------- Spinner lục giác ---------- */
+
+.hex-spinner {
+  width: var(--size, 16px);
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: conic-gradient(from 0deg, transparent 15%, #0397ab 60%, #0ac8b9 85%, #cdfafa 100%);
+  -webkit-mask: radial-gradient(circle, transparent 52%, black 54%);
+  mask: radial-gradient(circle, transparent 52%, black 54%);
+  animation: hex-spin 0.9s linear infinite;
+}
+@keyframes hex-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* ---------- Chấm trạng thái ---------- */
+
+.hex-status-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  rotate: 45deg;
+  background: var(--dot-color, #a09b8c);
+  box-shadow: 0 0 6px var(--dot-color, #a09b8c);
+}
+.hex-status-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border: 1px solid var(--dot-color, #a09b8c);
+  opacity: 0;
+  animation: hex-ping 2.2s ease-out infinite;
+}
+@keyframes hex-ping {
+  0% {
+    inset: 0;
+    opacity: 0.8;
+  }
+  70%,
+  100% {
+    inset: -5px;
+    opacity: 0;
+  }
+}
+
+/* ---------- Tab ---------- */
+
+.hex-tab {
+  position: relative;
+  padding: 0.7rem 1.4rem;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-steel-100);
+  cursor: pointer;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+.hex-tab::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #c8aa6e 30%, #f0e6d2 50%, #c8aa6e 70%, transparent);
+  box-shadow: 0 0 10px rgba(200, 170, 110, 0.7);
+  transform: scaleX(0);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hex-tab:hover {
+  color: var(--color-gold-200);
+}
+.hex-tab[data-active="true"] {
+  color: var(--color-gold-100);
+  text-shadow: 0 0 12px rgba(240, 230, 210, 0.4);
+}
+.hex-tab[data-active="true"]::after {
+  transform: scaleX(1);
+}
+
+/* ---------- Animation xuất hiện ---------- */
+
+.hex-reveal {
+  animation: hex-fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes hex-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Vòng hào quang khi đăng ký thành công */
+.hex-success-glyph {
+  animation: hex-forge-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  filter: drop-shadow(0 0 16px rgba(10, 200, 185, 0.85));
+}
+@keyframes hex-forge-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-90deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15) rotate(8deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+.hex-success-panel {
+  animation:
+    hex-fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both,
+    hex-panel-glow 2.6s ease-in-out infinite 0.6s;
+}
+@keyframes hex-panel-glow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 26px rgba(1, 10, 19, 0.85),
+      0 0 18px rgba(10, 200, 185, 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 26px rgba(1, 10, 19, 0.85),
+      0 0 30px rgba(10, 200, 185, 0.4);
+  }
+}
+
+/* Σ elo nhấp nháy nhẹ */
+.hex-sigma {
+  font-family: var(--font-display);
+  color: var(--color-gold-100);
+  text-shadow: 0 0 10px rgba(200, 170, 110, 0.6);
+}
+
+/* Khối code / link */
+.hex-code {
+  background: rgba(1, 10, 19, 0.9);
+  border: 1px solid rgba(70, 55, 20, 0.8);
+  color: var(--color-magic-100);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+/* Hộp cảnh báo đỏ */
+.hex-alert {
+  border: 1px solid rgba(232, 64, 87, 0.55);
+  background:
+    linear-gradient(160deg, rgba(150, 34, 46, 0.14), rgba(1, 10, 19, 0.6));
+  box-shadow: inset 0 0 18px rgba(150, 34, 46, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-dust span,
+  .hex-brand-glyph .glyph-core,
+  .hex-btn-magic:hover:not(:disabled),
+  .hex-result-banner h2 {
+    animation: none !important;
+  }
+  .hex-reveal,
+  .hex-elo-fill,
+  .hex-result-banner .line {
+    animation-duration: 0.01s !important;
+  }
 }

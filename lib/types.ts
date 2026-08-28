@@ -1,0 +1,68 @@
+export type Tier =
+  | "IRON"
+  | "BRONZE"
+  | "SILVER"
+  | "GOLD"
+  | "PLATINUM"
+  | "EMERALD"
+  | "DIAMOND"
+  | "MASTER"
+  | "GRANDMASTER"
+  | "CHALLENGER";
+
+export type Division = "IV" | "III" | "II" | "I";
+
+/** Key trong bảng elo: "IRON_IV" ... "DIAMOND_I", "MASTER", "GRANDMASTER", "CHALLENGER", "UNRANKED" */
+export type EloMap = Record<string, number>;
+
+export interface AppConfig {
+  riotApiKey: string;
+  /** Platform routing: vn2, kr, na1, euw1... */
+  platform: string;
+  eloMap: EloMap;
+}
+
+export interface RankInfo {
+  tier: Tier | "UNRANKED";
+  division: Division | null;
+  lp: number;
+  wins: number;
+  losses: number;
+  queue: string | null; // RANKED_SOLO_5x5 | RANKED_FLEX_SR | null
+}
+
+export interface ResolvedPlayer {
+  input: string;
+  ok: boolean;
+  error?: string;
+  gameName?: string;
+  tagLine?: string;
+  puuid?: string;
+  rank?: RankInfo;
+  elo?: number;
+}
+
+export interface TeamResult {
+  teams: { players: ResolvedPlayer[]; totalElo: number }[];
+  bench: ResolvedPlayer[];
+  spread: number; // chênh lệch max - min giữa các team
+}
+
+export interface EventPlayer {
+  displayName: string;
+  riotId: string;
+  gameName: string;
+  tagLine: string;
+  puuid: string;
+  registeredAt: string;
+}
+
+export interface TournamentEvent {
+  id: string;
+  name: string;
+  createdAt: string;
+  open: boolean;
+  players: EventPlayer[];
+}
+
+export type KeyStatus = "valid" | "invalid" | "missing" | "error";
