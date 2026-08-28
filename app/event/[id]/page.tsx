@@ -87,75 +87,77 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   }
 
   if (notFound) {
-    return <p className="text-red-400">Không tìm thấy sự kiện này.</p>;
+    return <p className="text-hex-red-400">Không tìm thấy sự kiện này.</p>;
   }
   if (!event) {
-    return <p className="text-zinc-400">Đang tải…</p>;
+    return (
+      <p className="flex items-center gap-2 text-hex-frame-500">
+        <span className="hex-spinner" />
+        Đang tải…
+      </p>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{event.name}</h1>
-        <p className="text-sm text-zinc-500">
+      <div className="hex-fade-item">
+        <p className="font-serif text-xs font-semibold uppercase tracking-[0.2em] text-hex-cyan-400">Sự kiện</p>
+        <h1 className="mt-1 font-serif text-3xl font-semibold text-hex-gold-100">{event.name}</h1>
+        <p className="mt-1 text-sm text-hex-frame-500">
           Tạo lúc {new Date(event.createdAt).toLocaleString("vi-VN")} ·{" "}
           {event.open ? (
-            <span className="text-emerald-400">Đang mở đăng ký</span>
+            <span className="text-hex-green-400">Đang mở đăng ký</span>
           ) : (
-            <span className="text-red-400">Đã đóng đăng ký</span>
+            <span className="text-hex-red-400">Đã đóng đăng ký</span>
           )}
         </p>
       </div>
 
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-        <p className="mb-2 text-sm font-medium text-zinc-300">Link đăng ký (gửi cho game thủ):</p>
+      <div className="hex-panel hex-fade-item p-4">
+        <p className="mb-2 text-sm font-medium text-hex-gold-100">Link đăng ký (gửi cho game thủ):</p>
         <div className="flex flex-wrap items-center gap-2">
-          <code className="rounded bg-zinc-950 px-3 py-1.5 text-sm text-blue-300">
+          <code className="rounded-sm bg-hex-navy-950 px-3 py-1.5 text-sm text-hex-cyan-400">
             {registerUrl || "…"}
           </code>
-          <button
-            onClick={copyLink}
-            className="rounded border border-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-800"
-          >
+          <button onClick={copyLink} className="hex-btn hex-btn-ghost px-3 py-1.5 text-[0.65rem]">
             {copied ? "✓ Đã copy" : "Copy link"}
           </button>
-          <button
-            onClick={toggleOpen}
-            className="rounded border border-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-800"
-          >
+          <button onClick={toggleOpen} className="hex-btn hex-btn-ghost px-3 py-1.5 text-[0.65rem]">
             {event.open ? "Đóng đăng ký" : "Mở lại đăng ký"}
           </button>
         </div>
       </div>
 
-      <div>
+      <div className="hex-fade-item">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
+          <h2 className="font-serif text-lg font-semibold uppercase tracking-[0.06em] text-hex-gold-200">
             Đã đăng ký: {event.players.length} người
-            <span className="ml-2 text-sm font-normal text-zinc-500">(tự làm mới mỗi 5 giây)</span>
+            <span className="ml-2 text-xs font-normal normal-case tracking-normal text-hex-frame-500">
+              (tự làm mới mỗi 5 giây)
+            </span>
           </h2>
           <button
             onClick={split}
             disabled={splitting || event.players.length < 2}
-            className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            className="hex-btn hex-btn-primary"
           >
             {splitting ? "Đang tra rank & chia team…" : "Lấy rank & chia team"}
           </button>
         </div>
         {event.players.length === 0 ? (
-          <p className="text-sm text-zinc-500">Chưa có ai đăng ký.</p>
+          <p className="text-sm text-hex-frame-500">Chưa có ai đăng ký.</p>
         ) : (
-          <ul className="divide-y divide-zinc-800 rounded-lg border border-zinc-800 bg-zinc-900">
+          <ul className="hex-panel divide-y divide-hex-frame-700/50">
             {event.players.map((p) => (
               <li key={p.puuid} className="flex items-center gap-3 px-4 py-2 text-sm">
-                <span className="font-medium">{p.riotId}</span>
-                {p.displayName && <span className="text-zinc-500">({p.displayName})</span>}
-                <span className="ml-auto text-xs text-zinc-600">
+                <span className="font-medium text-hex-gold-100">{p.riotId}</span>
+                {p.displayName && <span className="text-hex-frame-500">({p.displayName})</span>}
+                <span className="ml-auto text-xs text-hex-frame-700">
                   {new Date(p.registeredAt).toLocaleTimeString("vi-VN")}
                 </span>
                 <button
                   onClick={() => removePlayer(p.puuid)}
-                  className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-950"
+                  className="hex-btn hex-btn-danger px-2 py-0.5 text-[0.6rem]"
                   title="Xoá khỏi danh sách"
                 >
                   Xoá
@@ -166,11 +168,11 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         )}
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-hex-red-400">{error}</p>}
       {failed.length > 0 && (
-        <div className="rounded-lg border border-red-900/60 bg-red-950/30 p-3 text-sm">
-          <p className="mb-1 font-medium text-red-300">Không xử lý được {failed.length} người:</p>
-          <ul className="list-inside list-disc text-red-200/80">
+        <div className="hex-fade-item rounded-sm border border-hex-red-500/60 bg-hex-red-500/10 p-3 text-sm">
+          <p className="mb-1 font-medium text-hex-red-400">Không xử lý được {failed.length} người:</p>
+          <ul className="list-inside list-disc text-hex-gold-100/80">
             {failed.map((p, i) => (
               <li key={i}>
                 {p.input} — {p.error}

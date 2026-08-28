@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { TournamentEvent } from "@/lib/types";
 
 type CheckState =
@@ -87,17 +88,26 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  if (notFound) return <p className="text-red-400">Link đăng ký không tồn tại.</p>;
-  if (!event) return <p className="text-zinc-400">Đang tải…</p>;
+  if (notFound) return <p className="text-hex-red-400">Link đăng ký không tồn tại.</p>;
+  if (!event)
+    return (
+      <p className="flex items-center gap-2 text-hex-frame-500">
+        <span className="hex-spinner" />
+        Đang tải…
+      </p>
+    );
 
   if (done) {
     return (
-      <div className="mx-auto max-w-md rounded-lg border border-emerald-800 bg-emerald-950/30 p-6 text-center">
-        <p className="text-3xl">✅</p>
-        <h1 className="mt-2 text-xl font-bold text-emerald-300">Đăng ký thành công!</h1>
-        <p className="mt-1 text-zinc-300">
-          Tài khoản <span className="font-semibold">{done}</span> đã được ghi danh vào{" "}
-          <span className="font-semibold">{event.name}</span>.
+      <div className="hex-panel hex-panel-corners hex-fade-item mx-auto max-w-md p-8 text-center" style={{ animation: "hex-fade-up 0.5s cubic-bezier(0.16,1,0.3,1) both, hex-glow-pulse 2.4s ease-in-out infinite 0.5s" }}>
+        <span className="mx-auto flex h-14 w-14 items-center justify-center text-3xl text-hex-cyan-400" style={{ filter: "drop-shadow(0 0 12px rgba(10,200,185,0.8))" }}>
+          ⬡
+        </span>
+        <h1 className="mt-3 font-serif text-2xl font-semibold text-hex-gold-100">Đăng ký thành công!</h1>
+        <div className="hex-divider" />
+        <p className="text-hex-gold-100/80">
+          Tài khoản <span className="font-semibold text-hex-cyan-400">{done}</span> đã được ghi danh vào{" "}
+          <span className="font-semibold text-hex-gold-200">{event.name}</span>.
         </p>
       </div>
     );
@@ -105,57 +115,61 @@ export default function RegisterPage({ params }: { params: Promise<{ id: string 
 
   return (
     <div className="mx-auto max-w-md space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold">Đăng ký thi đấu</h1>
-        <p className="mt-1 text-zinc-400">
-          Sự kiện: <span className="font-semibold text-zinc-200">{event.name}</span>
+      <div className="hex-fade-item">
+        <p className="font-display text-xs uppercase tracking-[0.25em] text-hex-cyan-400">Ghi danh</p>
+        <h1 className="mt-1 font-serif text-2xl font-semibold text-hex-gold-100">Đăng ký thi đấu</h1>
+        <p className="mt-1 text-hex-frame-500">
+          Sự kiện: <span className="font-semibold text-hex-gold-200">{event.name}</span>
         </p>
       </div>
 
       {!event.open ? (
-        <p className="rounded-lg border border-red-900 bg-red-950/30 p-4 text-red-300">
+        <p className="hex-fade-item rounded-sm border border-hex-red-500/60 bg-hex-red-500/10 p-4 text-hex-red-400">
           Sự kiện đã đóng đăng ký.
         </p>
       ) : (
-        <div className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+        <div className="hex-panel hex-fade-item space-y-4 p-5">
           <div>
-            <label className="mb-1 block text-sm text-zinc-400">Tên hiển thị (tuỳ chọn)</label>
+            <label className="mb-1 block text-sm text-hex-frame-500">Tên hiển thị (tuỳ chọn)</label>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               maxLength={50}
               placeholder="Tên thật / biệt danh"
-              className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="hex-input rounded-sm px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-zinc-400">
-              Tên in-game (Riot ID) <span className="text-red-400">*</span>
+            <label className="mb-1 block text-sm text-hex-frame-500">
+              Tên in-game (Riot ID) <span className="text-hex-red-400">*</span>
             </label>
             <input
               value={riotId}
               onChange={(e) => setRiotId(e.target.value)}
               placeholder="Tên#TAG (ví dụ: Faker#KR1)"
-              className="w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm outline-none focus:border-blue-500"
+              className="hex-input rounded-sm px-3 py-2 text-sm"
             />
-            <p className="mt-1 min-h-5 text-xs">
+            <p className="mt-1 flex min-h-5 items-center gap-1.5 text-xs">
               {check.kind === "checking" && (
-                <span className="text-zinc-400">Đang kiểm tra tài khoản…</span>
+                <span className="flex items-center gap-1.5 text-hex-frame-500">
+                  <span className="hex-spinner" style={{ "--size": "12px" } as CSSProperties} />
+                  Đang kiểm tra tài khoản…
+                </span>
               )}
               {check.kind === "valid" && (
-                <span className="text-emerald-400">✓ Tìm thấy tài khoản {check.riotId}</span>
+                <span className="text-hex-green-400">✓ Tìm thấy tài khoản {check.riotId}</span>
               )}
-              {check.kind === "invalid" && <span className="text-red-400">✗ {check.message}</span>}
+              {check.kind === "invalid" && <span className="text-hex-red-400">✗ {check.message}</span>}
             </p>
           </div>
           <button
             onClick={submit}
             disabled={submitting || check.kind !== "valid"}
-            className="w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+            className="hex-btn hex-btn-primary w-full"
           >
             {submitting ? "Đang đăng ký…" : "Đăng ký"}
           </button>
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-sm text-hex-red-400">{error}</p>}
         </div>
       )}
     </div>

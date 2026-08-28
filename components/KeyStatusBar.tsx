@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import type { KeyStatus } from "@/lib/types";
 
 interface KeyInfo {
@@ -10,10 +11,10 @@ interface KeyInfo {
 }
 
 const STATUS_UI: Record<KeyStatus, { dot: string; text: string; cls: string }> = {
-  valid: { dot: "bg-emerald-400", text: "Riot key còn hạn", cls: "text-emerald-300" },
-  invalid: { dot: "bg-red-500", text: "Riot key hết hạn / không hợp lệ", cls: "text-red-300" },
-  missing: { dot: "bg-amber-400", text: "Chưa có Riot key", cls: "text-amber-300" },
-  error: { dot: "bg-zinc-400", text: "Không kiểm tra được key", cls: "text-zinc-300" },
+  valid: { dot: "var(--color-hex-cyan-400)", text: "Riot key còn hạn", cls: "text-hex-cyan-400" },
+  invalid: { dot: "var(--color-hex-red-400)", text: "Riot key hết hạn / không hợp lệ", cls: "text-hex-red-400" },
+  missing: { dot: "var(--color-hex-gold-300)", text: "Chưa có Riot key", cls: "text-hex-gold-300" },
+  error: { dot: "var(--color-hex-frame-500)", text: "Không kiểm tra được key", cls: "text-hex-frame-500" },
 };
 
 export default function KeyStatusBar() {
@@ -68,23 +69,23 @@ export default function KeyStatusBar() {
   const ui = info ? STATUS_UI[info.status] : null;
 
   return (
-    <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-2 text-sm">
+    <div className="relative z-10 border-b border-hex-gold-600/50 bg-hex-navy-950/80 px-4 py-2 text-sm backdrop-blur-sm">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
         {ui ? (
           <span className={`flex items-center gap-2 ${ui.cls}`}>
-            <span className={`h-2.5 w-2.5 rounded-full ${ui.dot}`} />
+            <span className="hex-status-dot" style={{ "--dot-color": ui.dot } as CSSProperties} />
             {ui.text}
             {info?.keyHint && info.status === "valid" && (
-              <span className="text-zinc-500">({info.keyHint})</span>
+              <span className="text-hex-frame-500">({info.keyHint})</span>
             )}
           </span>
         ) : (
-          <span className="text-zinc-500">Đang kiểm tra Riot key…</span>
+          <span className="flex items-center gap-2 text-hex-frame-500">
+            <span className="hex-spinner" />
+            Đang kiểm tra Riot key…
+          </span>
         )}
-        <button
-          onClick={() => setShowInput((v) => !v)}
-          className="ml-auto rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
-        >
+        <button onClick={() => setShowInput((v) => !v)} className="hex-btn hex-btn-ghost ml-auto px-3 py-1 text-[0.65rem]">
           {showInput ? "Ẩn" : "Đổi key"}
         </button>
         {showInput && (
@@ -94,17 +95,17 @@ export default function KeyStatusBar() {
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
               placeholder="RGAPI-xxxxxxxx-xxxx-..."
-              className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 font-mono text-xs text-zinc-100 outline-none focus:border-blue-500"
+              className="hex-input flex-1 rounded-sm px-2 py-1 font-mono text-xs"
               onKeyDown={(e) => e.key === "Enter" && submitKey()}
             />
             <button
               onClick={submitKey}
               disabled={saving || !newKey.trim()}
-              className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+              className="hex-btn hex-btn-primary px-3 py-1 text-[0.65rem]"
             >
               {saving ? "Đang kiểm tra…" : "Lưu key"}
             </button>
-            {error && <span className="text-xs text-red-400">{error}</span>}
+            {error && <span className="text-xs text-hex-red-400">{error}</span>}
           </div>
         )}
       </div>
