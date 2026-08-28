@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
 import type { ResolvedPlayer, TeamResult } from "@/lib/types";
 
@@ -22,6 +23,7 @@ export default function HomePage() {
 
   // Tab 1: dán danh sách
   const [rawList, setRawList] = useState("");
+  const [teamSize, setTeamSize] = useState("5");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
@@ -44,7 +46,7 @@ export default function HomePage() {
       const res = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ riotIds }),
+        body: JSON.stringify({ riotIds, teamSize: parseTeamSize(teamSize) ?? 5 }),
       });
       const data = (await res.json()) as SplitResponse;
       if (!res.ok) {
@@ -108,7 +110,8 @@ export default function HomePage() {
             Mỗi dòng một tên in-game theo định dạng{" "}
             <code className="hex-code px-1.5 py-0.5 text-xs">Tên#TAG</code> (ví dụ:{" "}
             <code className="hex-code px-1.5 py-0.5 text-xs">Faker#KR1</code>). Hệ thống tra rank
-            từng người qua Riot API rồi chia team 5 người sao cho tổng elo cân bằng nhất.
+            từng người qua Riot API rồi chia team theo số người bạn chọn sao cho tổng elo cân
+            bằng nhất; người thừa được ghép vào các team làm dự bị (mỗi team tối đa 1).
           </p>
 
           <div className="hex-panel relative p-1">
@@ -123,8 +126,13 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <button onClick={split} disabled={loading || lineCount < 2} className="hex-btn hex-btn-magic">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <TeamSizeInput value={teamSize} onChange={setTeamSize} />
+            <button
+              onClick={split}
+              disabled={loading || lineCount < 2 || parseTeamSize(teamSize) === null}
+              className="hex-btn hex-btn-magic"
+            >
               {loading ? (
                 <>
                   <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
@@ -138,6 +146,9 @@ export default function HomePage() {
               Summoners: <span className="text-gold-200">{lineCount}</span>
             </span>
           </div>
+          {parseTeamSize(teamSize) === null && (
+            <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
+          )}
 
           {error && <p className="hex-reveal text-sm text-blood-300">{error}</p>}
           {failed.length > 0 && (

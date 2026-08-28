@@ -11,6 +11,8 @@ export const maxDuration = 120;
 interface SplitRequest {
   riotIds?: string[];
   eventId?: string;
+  /** Số người mỗi team, mặc định 5. */
+  teamSize?: number;
 }
 
 /**
@@ -19,6 +21,10 @@ interface SplitRequest {
  */
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as SplitRequest;
+  const teamSize = Math.floor(Number(body.teamSize));
+  if (body.teamSize !== undefined && (!Number.isFinite(teamSize) || teamSize < 1 || teamSize > 20)) {
+    return NextResponse.json({ error: "Số người mỗi team phải từ 1 đến 20" }, { status: 400 });
+  }
   const cfg = await getConfig();
   if (!cfg.riotApiKey) {
     return NextResponse.json({ error: "Chưa cấu hình Riot API key" }, { status: 503 });
@@ -110,6 +116,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = balanceTeams(okPlayers);
+  const result = balanceTeams(okPlayers, body.teamSize !== undefined ? teamSize : undefined);
   return NextResponse.json({ players: resolved, failed, result });
 }

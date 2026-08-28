@@ -73,7 +73,9 @@ export default function TeamResults({ result }: { result: TeamResult }) {
               <h3 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-magic-300 [text-shadow:0_0_10px_rgba(10,200,185,0.5)]">
                 Đội {i + 1}
               </h3>
-              <span className="hex-sigma text-sm font-bold">Σ {team.totalElo}</span>
+              <span className="hex-sigma text-sm font-bold" title="Tổng elo đội hình chính (không tính dự bị)">
+                Σ {team.totalElo}
+              </span>
             </header>
             <div className="hex-elo-track mb-3" title={`Tổng elo: ${team.totalElo}`}>
               <div
@@ -86,6 +88,16 @@ export default function TeamResults({ result }: { result: TeamResult }) {
                 <PlayerRow key={j} p={p} index={j} />
               ))}
             </ul>
+            {team.reserve && (
+              <div className="mt-2 border-t border-dashed border-gold-700/80 pt-2">
+                <p className="font-display text-[0.55rem] font-bold uppercase tracking-[0.22em] text-steel-100">
+                  Dự bị
+                </p>
+                <ul className="opacity-85">
+                  <PlayerRow p={team.reserve} index={team.players.length} />
+                </ul>
+              </div>
+            )}
           </section>
         ))}
       </div>
@@ -96,7 +108,7 @@ export default function TeamResults({ result }: { result: TeamResult }) {
           style={{ animationDelay: `${200 + result.teams.length * 120}ms` }}
         >
           <h3 className="mb-2 font-display text-xs font-bold uppercase tracking-[0.18em] text-steel-100">
-            Dự bị ({result.bench.length})
+            Chưa xếp đội ({result.bench.length})
           </h3>
           <ul className="divide-y divide-steel-700/60">
             {result.bench.map((p, j) => (

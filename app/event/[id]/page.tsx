@@ -3,6 +3,7 @@
 import { use, useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
 import type { ResolvedPlayer, TeamResult, TournamentEvent } from "@/lib/types";
 
@@ -11,6 +12,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [teamSize, setTeamSize] = useState("5");
   const [splitting, setSplitting] = useState(false);
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
@@ -75,7 +77,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       const res = await fetch("/api/split", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: id }),
+        body: JSON.stringify({ eventId: id, teamSize: parseTeamSize(teamSize) ?? 5 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -142,21 +144,27 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               (tự làm mới mỗi 5 giây)
             </span>
           </h2>
-          <button
-            onClick={split}
-            disabled={splitting || event.players.length < 2}
-            className="hex-btn hex-btn-magic"
-          >
-            {splitting ? (
-              <>
-                <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
-                Đang tra rank &amp; chia team…
-              </>
-            ) : (
-              "⬡ Lấy rank & chia team"
-            )}
-          </button>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <TeamSizeInput value={teamSize} onChange={setTeamSize} />
+            <button
+              onClick={split}
+              disabled={splitting || event.players.length < 2 || parseTeamSize(teamSize) === null}
+              className="hex-btn hex-btn-magic"
+            >
+              {splitting ? (
+                <>
+                  <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
+                  Đang tra rank &amp; chia team…
+                </>
+              ) : (
+                "⬡ Lấy rank & chia team"
+              )}
+            </button>
+          </div>
         </div>
+        {parseTeamSize(teamSize) === null && (
+          <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
+        )}
 
         {event.players.length === 0 ? (
           <p className="text-sm text-steel-100">Chưa có ai đăng ký.</p>

@@ -43,9 +43,12 @@ export interface ResolvedPlayer {
 }
 
 export interface TeamResult {
-  teams: { players: ResolvedPlayer[]; totalElo: number }[];
+  /** totalElo chỉ tính đội hình chính, không tính dự bị. */
+  teams: { players: ResolvedPlayer[]; totalElo: number; reserve?: ResolvedPlayer }[];
+  /** Người thừa không ghép được vào team nào (mỗi team chỉ nhận tối đa 1 dự bị). */
   bench: ResolvedPlayer[];
   spread: number; // chênh lệch max - min giữa các team
+  teamSize: number; // số người mỗi team đã dùng để chia
 }
 
 export interface EventPlayer {
