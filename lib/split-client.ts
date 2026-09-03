@@ -3,6 +3,8 @@ import type { ResolvedPlayer, TeamResult } from "./types";
 export interface SplitProgress {
   done: number;
   total: number;
+  /** Dòng trạng thái phụ từ server (ví dụ: đang ước lượng MMR cho người chưa rank). */
+  note?: string;
 }
 
 export interface SplitOutcome {
@@ -16,6 +18,7 @@ interface SplitEvent extends SplitOutcome {
   type: "start" | "progress" | "result" | "error";
   done?: number;
   total?: number;
+  note?: string;
 }
 
 /**
@@ -23,7 +26,13 @@ interface SplitEvent extends SplitOutcome {
  * Trả về kết quả cuối (result) hoặc error — không throw trừ lỗi mạng.
  */
 export async function splitWithProgress(
-  body: { riotIds?: string[]; eventId?: string; teamSize?: number; platform?: string },
+  body: {
+    riotIds?: string[];
+    eventId?: string;
+    teamSize?: number;
+    platform?: string;
+    estimateUnranked?: boolean;
+  },
   onProgress: (p: SplitProgress) => void
 ): Promise<SplitOutcome> {
   const res = await fetch("/api/split", {
@@ -53,7 +62,7 @@ export async function splitWithProgress(
       return;
     }
     if (ev.type === "start" || ev.type === "progress") {
-      onProgress({ done: ev.done ?? 0, total: ev.total ?? 0 });
+      onProgress({ done: ev.done ?? 0, total: ev.total ?? 0, note: ev.note });
     } else if (ev.type === "result" || ev.type === "error") {
       outcome = { result: ev.result, failed: ev.failed, players: ev.players, error: ev.error };
     }

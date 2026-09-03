@@ -128,6 +128,50 @@ export async function getSummonerByPuuid(
   return { profileIconId: data.profileIconId, summonerLevel: data.summonerLevel ?? 0 };
 }
 
+/** Lấy danh sách match ID gần nhất theo PUUID (match-v5, regional routing). */
+export async function getRecentMatchIds(
+  apiKey: string,
+  platform: string,
+  puuid: string,
+  count = 8
+): Promise<string[]> {
+  const cluster = clusterFor(platform);
+  const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${count}`;
+  const res = await riotFetch(url, apiKey);
+  if (res.status === 401 || res.status === 403)
+    throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (!res.ok) return [];
+  const ids = (await res.json()) as unknown;
+  return Array.isArray(ids) ? (ids as string[]) : [];
+}
+
+export interface MatchLite {
+  queueId: number;
+  /** PUUID của 10 người trong trận. */
+  participantPuuids: string[];
+}
+
+/** Lấy thông tin gọn của một trận: queueId + danh sách PUUID người chơi. */
+export async function getMatchLite(
+  apiKey: string,
+  platform: string,
+  matchId: string
+): Promise<MatchLite | null> {
+  const cluster = clusterFor(platform);
+  const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+  const res = await riotFetch(url, apiKey);
+  if (res.status === 401 || res.status === 403)
+    throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    metadata?: { participants?: string[] };
+    info?: { queueId?: number };
+  };
+  if (typeof data.info?.queueId !== "number" || !Array.isArray(data.metadata?.participants))
+    return null;
+  return { queueId: data.info.queueId, participantPuuids: data.metadata.participants };
+}
+
 // Cache version Data Dragon trong bộ nhớ tiến trình — version game đổi ~2 tuần/lần.
 let ddragonVersion = "15.1.1"; // fallback nếu chưa fetch được
 let ddragonFetchedAt = 0;

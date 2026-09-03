@@ -82,9 +82,22 @@ function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; p
         )}
         <span className="hex-badge mt-1" style={{ "--tier-color": color } as CSSProperties}>
           {rankLabel(p.rank)}
+          {p.eloEstimated && (
+            <span
+              className="ml-1 text-magic-300"
+              title={`MMR ước lượng từ rank của người cùng trận gần đây (${p.estimateSamples ?? "?"} mẫu)`}
+            >
+              · MMR ≈
+            </span>
+          )}
         </span>
       </span>
-      <span className="shrink-0 text-right font-mono text-xs text-steel-100">{p.elo}</span>
+      <span
+        className="shrink-0 text-right font-mono text-xs text-steel-100"
+        title={p.eloEstimated ? "Elo ước lượng từ lịch sử đấu" : undefined}
+      >
+        {p.eloEstimated ? `≈${p.elo}` : p.elo}
+      </span>
     </li>
   );
 }

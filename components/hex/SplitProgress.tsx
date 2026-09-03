@@ -18,6 +18,9 @@ export default function SplitProgressBar({ progress }: { progress: SplitProgress
       <div className="hex-progress-track">
         <div className="hex-progress-fill" style={{ width: `${pct}%` }} />
       </div>
+      {progress.note && (
+        <p className="truncate font-mono text-[0.68rem] text-steel-100">{progress.note}</p>
+      )}
     </div>
   );
 }

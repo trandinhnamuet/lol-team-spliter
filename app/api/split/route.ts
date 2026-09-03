@@ -12,11 +12,12 @@ import {
   profileIconUrl,
   RiotApiError,
 } from "@/lib/riot";
+import { estimateEloFromMatches } from "@/lib/mmr-estimate";
 import { getConfig, getEvent } from "@/lib/store";
 import type { ResolvedPlayer } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 interface SplitRequest {
   riotIds?: string[];
@@ -25,6 +26,8 @@ interface SplitRequest {
   teamSize?: number;
   /** Khu vực/server dùng để tra rank — do client chọn, mặc định theo cấu hình server. */
   platform?: string;
+  /** Ước lượng MMR cho người chưa rank qua lịch sử đấu (chậm hơn, tốn thêm request). */
+  estimateUnranked?: boolean;
 }
 
 /**
@@ -33,7 +36,8 @@ interface SplitRequest {
  *
  * Trả về stream NDJSON để client hiện tiến độ:
  *   {"type":"start","total":n}
- *   {"type":"progress","done":i,"total":n}   — sau mỗi người tra xong
+ *   {"type":"progress","done":i,"total":n,"note"?:…} — sau mỗi người tra xong
+ *     (note: dòng trạng thái phụ, ví dụ đang ước lượng MMR cho người chưa rank)
  *   {"type":"result","players":…,"failed":…,"result":…}
  *   {"type":"error","error":…,"players":…?}  — lỗi giữa chừng rồi kết thúc
  * Lỗi validate trước khi bắt đầu vẫn trả JSON thường kèm HTTP status.
@@ -96,6 +100,9 @@ export async function POST(req: Request) {
 
         const ddVersion = await getDdragonVersion();
         const resolved: ResolvedPlayer[] = [];
+        // Cache tra rank người-cùng-trận khi ước lượng MMR, dùng chung cả request
+        // (người chơi trong danh sách cũng được seed vào để khỏi tra lại).
+        const leagueCache = new Map<string, number | null>();
         let done = 0;
         for (const input of inputs) {
           try {
@@ -128,6 +135,33 @@ export async function POST(req: Request) {
 
             const rank = await getRankByPuuid(cfg.riotApiKey, platform, puuid);
 
+            let elo = eloForRank(rank, cfg.eloMap);
+            let eloEstimated: boolean | undefined;
+            let estimateSamples: number | undefined;
+            if (rank.tier !== "UNRANKED") {
+              leagueCache.set(puuid, elo);
+            } else if (body.estimateUnranked) {
+              // Chưa rank + bật ước lượng: tra lịch sử đấu để đoán MMR (chậm, có thể fail êm)
+              send({
+                type: "progress",
+                done,
+                total: inputs.length,
+                note: `Đang ước lượng MMR cho ${input.label}…`,
+              });
+              const est = await estimateEloFromMatches({
+                apiKey: cfg.riotApiKey,
+                platform,
+                puuid,
+                eloMap: cfg.eloMap,
+                leagueCache,
+              });
+              if (est) {
+                elo = est.elo;
+                eloEstimated = true;
+                estimateSamples = est.samples;
+              }
+            }
+
             // Icon + cấp độ tài khoản: lỗi ở đây không làm hỏng người chơi, chỉ thiếu avatar
             let avatarUrl: string | undefined;
             let summonerLevel: number | undefined;
@@ -148,9 +182,11 @@ export async function POST(req: Request) {
               tagLine,
               puuid,
               rank,
-              elo: eloForRank(rank, cfg.eloMap),
+              elo,
               avatarUrl,
               summonerLevel,
+              eloEstimated,
+              estimateSamples,
             });
           } catch (e) {
             if (e instanceof RiotApiError && (e.status === 401 || e.status === 403)) {

@@ -25,6 +25,7 @@ export default function HomePage() {
   // Tab 1: dán danh sách
   const [rawList, setRawList] = useState("");
   const [teamSize, setTeamSize] = useState("5");
+  const [estimateUnranked, setEstimateUnranked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<SplitProgress | null>(null);
   const [error, setError] = useState("");
@@ -47,7 +48,12 @@ export default function HomePage() {
     try {
       const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
       const data = await splitWithProgress(
-        { riotIds, teamSize: parseTeamSize(teamSize) ?? 5, platform: getStoredRegion() },
+        {
+          riotIds,
+          teamSize: parseTeamSize(teamSize) ?? 5,
+          platform: getStoredRegion(),
+          estimateUnranked,
+        },
         setProgress
       );
       if (data.error) {
@@ -127,6 +133,23 @@ export default function HomePage() {
               style={{ boxShadow: "none" }}
             />
           </div>
+
+          <label className="flex max-w-3xl cursor-pointer items-start gap-2.5 text-sm text-steel-100">
+            <input
+              type="checkbox"
+              checked={estimateUnranked}
+              onChange={(e) => setEstimateUnranked(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-magic-300,#0ac8b9)]"
+            />
+            <span>
+              <span className="font-semibold text-gold-100">
+                Ước lượng MMR cho người chưa rank
+              </span>{" "}
+              — tra vài trận gần nhất qua Riot API, lấy rank trung vị của những người cùng trận
+              thay vì mặc định coi là Bạc IV. Chính xác hơn nhưng chậm hơn đáng kể và tốn thêm
+              lượt gọi API (dễ chạm rate limit nếu nhiều người chưa rank).
+            </span>
+          </label>
 
           <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
             <TeamSizeInput value={teamSize} onChange={setTeamSize} />
