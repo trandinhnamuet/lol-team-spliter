@@ -224,22 +224,22 @@ export default function AdminPage() {
           <ul className="hex-panel relative divide-y divide-steel-700/60">
             <HexCorners />
             {events.map((e) => (
-              <li key={e.id} className="hex-player-row space-y-2 px-4 py-3 text-sm">
+              <li key={e.id} className="hex-player-row space-y-3 px-4 py-4 text-sm">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Link
-                    href={`/event/${e.id}`}
-                    className="font-medium text-magic-300 transition-colors hover:text-magic-100 hover:[text-shadow:0_0_8px_rgba(10,200,185,0.6)]"
-                  >
-                    {e.name}
-                  </Link>
-                  <span className="text-steel-100">{e.playerCount} người</span>
+                  <span className="font-heading text-lg font-semibold text-gold-100">{e.name}</span>
+                  <span className="text-steel-100">{e.playerCount} người đã đăng ký</span>
                   <span className={e.open ? "text-magic-300" : "text-blood-300"}>
-                    {e.open ? "Đang mở" : "Đã đóng"}
+                    {e.open ? "● Đang mở" : "● Đã đóng"}
                   </span>
                   <span className="ml-auto font-mono text-xs text-steel-300">
                     {new Date(e.createdAt).toLocaleString("vi-VN")}
                   </span>
                 </div>
+
+                {/* Hành động chính: vào trang sự kiện để xem danh sách + chia team */}
+                <Link href={`/event/${e.id}`} className="hex-btn hex-btn-magic w-full sm:w-auto">
+                  ⬡ Xem danh sách &amp; chia team
+                </Link>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="hex-code min-w-0 flex-1 basis-64 truncate text-xs">
@@ -247,19 +247,19 @@ export default function AdminPage() {
                   </code>
                   <button
                     onClick={() => copyRegisterLink(e.id)}
-                    className="hex-btn hex-btn-ghost"
+                    className="hex-btn"
                     title="Copy link đăng ký để gửi cho game thủ"
                   >
                     {copiedId === e.id ? (
                       <span className="text-magic-300">✓ Đã copy</span>
                     ) : (
-                      "Copy link"
+                      "Copy link đăng ký"
                     )}
                   </button>
                   <button
                     onClick={() => toggleOpen(e.id, !e.open)}
                     disabled={busyId === e.id}
-                    className="hex-btn hex-btn-ghost"
+                    className="hex-btn"
                   >
                     {e.open ? "Đóng đăng ký" : "Mở lại đăng ký"}
                   </button>
@@ -271,24 +271,21 @@ export default function AdminPage() {
                       <button
                         onClick={() => removeEvent(e.id)}
                         disabled={busyId === e.id}
-                        className="hex-btn hex-btn-ghost hex-btn-danger"
+                        className="hex-btn hex-btn-danger"
                       >
                         {busyId === e.id ? "Đang xoá…" : "Xoá thật"}
                       </button>
-                      <button
-                        onClick={() => setConfirmDeleteId("")}
-                        className="hex-btn hex-btn-ghost"
-                      >
+                      <button onClick={() => setConfirmDeleteId("")} className="hex-btn">
                         Huỷ
                       </button>
                     </>
                   ) : (
                     <button
                       onClick={() => setConfirmDeleteId(e.id)}
-                      className="hex-btn hex-btn-ghost hex-btn-danger"
+                      className="hex-btn hex-btn-danger"
                       title="Xoá sự kiện"
                     >
-                      Xoá
+                      Xoá sự kiện
                     </button>
                   )}
                 </div>

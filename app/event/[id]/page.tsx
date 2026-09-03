@@ -138,11 +138,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <code className="hex-code min-w-0 flex-1 basis-64 truncate">{registerUrl || "…"}</code>
-          <button onClick={copyLink} className="hex-btn hex-btn-ghost">
+          <button onClick={copyLink} className="hex-btn">
             {copied ? <span className="text-magic-300">✓ Đã copy</span> : "Copy link"}
           </button>
-          <button onClick={toggleOpen} className="hex-btn hex-btn-ghost">
-            {event.open ? "Đóng đăng ký" : "Mở lại đăng ký"}
+          <button
+            onClick={toggleOpen}
+            className="hex-btn"
+            title={
+              event.open
+                ? "Chốt sổ — không cho đăng ký thêm"
+                : "Cho phép game thủ đăng ký tiếp"
+            }
+          >
+            {event.open ? "Chốt sổ / Đóng đăng ký" : "Mở lại đăng ký"}
           </button>
         </div>
       </div>
