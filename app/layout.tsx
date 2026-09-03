@@ -42,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="hex-vignette" aria-hidden="true" />
 
         <header className="hex-header sticky top-0 z-40">
-          <div className="mx-auto flex max-w-5xl items-center gap-6 px-4 py-3">
+          <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
             <Link href="/" className="group flex items-center gap-3">
               <HexLogo />
               <span className="flex flex-col leading-tight">
@@ -61,9 +61,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <KeyStatusBar />
 
-        <main className="relative z-10 mx-auto w-full max-w-5xl px-4 py-10">{children}</main>
+        <main className="relative z-10 mx-auto w-full max-w-7xl px-4 py-10">{children}</main>
 
-        <footer className="relative z-10 mx-auto max-w-5xl px-4 pb-8">
+        <footer className="relative z-10 mx-auto max-w-7xl px-4 pb-8">
           <div className="hex-divider" />
           <p className="text-center font-display text-[0.6rem] uppercase tracking-[0.3em] text-steel-300">
             Forged in the spirit of Hextech

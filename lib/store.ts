@@ -97,6 +97,12 @@ export async function getResult(id: string): Promise<SavedResult | null> {
   return results.find((r) => r.id === id) ?? null;
 }
 
+/** Danh sách kết quả đã lưu, mới nhất trước. */
+export async function listResults(): Promise<SavedResult[]> {
+  const results = await readJson<SavedResult[]>(RESULTS_FILE, []);
+  return [...results].reverse();
+}
+
 export async function updateEvent(
   id: string,
   updater: (e: TournamentEvent) => TournamentEvent | string

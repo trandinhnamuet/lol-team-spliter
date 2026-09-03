@@ -123,6 +123,33 @@ export async function checkKeyStatus(apiKey: string, platform: string): Promise<
   }
 }
 
+/** Map platform routing -> region slug dùng trong URL của op.gg. */
+const OPGG_REGION: Record<string, string> = {
+  na1: "na",
+  euw1: "euw",
+  eun1: "eune",
+  kr: "kr",
+  jp1: "jp",
+  oc1: "oce",
+  br1: "br",
+  la1: "lan",
+  la2: "las",
+  tr1: "tr",
+  ru: "ru",
+  vn2: "vn",
+  tw2: "tw",
+  me1: "me",
+  ph2: "ph",
+  sg2: "sg",
+  th2: "th",
+};
+
+/** Link xem chi tiết summoner trên op.gg theo Riot ID + platform routing. */
+export function opggUrl(gameName: string, tagLine: string, platform: string): string {
+  const region = OPGG_REGION[platform.toLowerCase()] ?? "vn";
+  return `https://www.op.gg/summoners/${region}/${encodeURIComponent(gameName)}-${encodeURIComponent(tagLine)}`;
+}
+
 /** Chuẩn hoá Riot ID: bỏ khoảng trắng thừa quanh dấu # và hai đầu chuỗi. */
 export function normalizeRiotId(input: string): string {
   return input.trim().replace(/\s*#\s*/g, "#");

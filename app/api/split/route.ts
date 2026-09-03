@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { balanceTeams } from "@/lib/balance";
 import { eloForRank } from "@/lib/elo";
+import { isKnownRegion } from "@/lib/region";
 import {
   getAccountByRiotId,
   getRankByPuuid,
@@ -19,6 +20,8 @@ interface SplitRequest {
   eventId?: string;
   /** Số người mỗi team, mặc định 5. */
   teamSize?: number;
+  /** Khu vực/server dùng để tra rank — do client chọn, mặc định theo cấu hình server. */
+  platform?: string;
 }
 
 /**
@@ -42,9 +45,19 @@ export async function POST(req: Request) {
   if (!cfg.riotApiKey) {
     return NextResponse.json({ error: "Chưa cấu hình Riot API key" }, { status: 503 });
   }
+  if (body.platform !== undefined && !isKnownRegion(String(body.platform))) {
+    return NextResponse.json({ error: "Khu vực không hợp lệ" }, { status: 400 });
+  }
+  const platform = body.platform?.toLowerCase() || cfg.platform;
 
   // Gom input: từ list dán tay hoặc từ sự kiện đăng ký
-  let inputs: { label: string; riotId: string; puuid?: string }[] = [];
+  let inputs: {
+    label: string;
+    riotId: string;
+    puuid?: string;
+    gameName?: string;
+    tagLine?: string;
+  }[] = [];
   if (body.eventId) {
     const event = await getEvent(body.eventId);
     if (!event) {
@@ -54,6 +67,8 @@ export async function POST(req: Request) {
       label: p.displayName ? `${p.displayName} (${p.riotId})` : p.riotId,
       riotId: p.riotId,
       puuid: p.puuid,
+      gameName: p.gameName,
+      tagLine: p.tagLine,
     }));
   } else if (Array.isArray(body.riotIds)) {
     inputs = body.riotIds
@@ -81,8 +96,8 @@ export async function POST(req: Request) {
         for (const input of inputs) {
           try {
             let puuid = input.puuid;
-            let gameName: string | undefined;
-            let tagLine: string | undefined;
+            let gameName: string | undefined = input.gameName;
+            let tagLine: string | undefined = input.tagLine;
 
             if (!puuid) {
               const parsed = parseRiotId(input.riotId);
@@ -93,7 +108,7 @@ export async function POST(req: Request) {
               }
               const account = await getAccountByRiotId(
                 cfg.riotApiKey,
-                cfg.platform,
+                platform,
                 parsed.gameName,
                 parsed.tagLine
               );
@@ -107,7 +122,7 @@ export async function POST(req: Request) {
               tagLine = account.tagLine;
             }
 
-            const rank = await getRankByPuuid(cfg.riotApiKey, cfg.platform, puuid);
+            const rank = await getRankByPuuid(cfg.riotApiKey, platform, puuid);
             resolved.push({
               input: input.label,
               ok: true,
@@ -146,7 +161,7 @@ export async function POST(req: Request) {
         }
 
         const result = balanceTeams(okPlayers, body.teamSize !== undefined ? teamSize : undefined);
-        send({ type: "result", players: resolved, failed, result });
+        send({ type: "result", players: resolved, failed, result: { ...result, platform } });
         controller.close();
       } catch {
         try {

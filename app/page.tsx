@@ -7,6 +7,7 @@ import HexCorners from "@/components/hex/HexCorners";
 import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
+import { getStoredRegion } from "@/lib/region";
 import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
 import type { ResolvedPlayer, TeamResult } from "@/lib/types";
 
@@ -46,7 +47,7 @@ export default function HomePage() {
     try {
       const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
       const data = await splitWithProgress(
-        { riotIds, teamSize: parseTeamSize(teamSize) ?? 5 },
+        { riotIds, teamSize: parseTeamSize(teamSize) ?? 5, platform: getStoredRegion() },
         setProgress
       );
       if (data.error) {

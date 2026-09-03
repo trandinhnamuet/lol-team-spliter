@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
-import { saveResult } from "@/lib/store";
+import { listResults, saveResult } from "@/lib/store";
 import type { ResolvedPlayer, TeamResult } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+/** Danh sách tóm tắt các kết quả đã lưu, mới nhất trước — dùng cho trang /results. */
+export async function GET() {
+  const results = await listResults();
+  return NextResponse.json({
+    results: results.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      teamCount: r.result.teams.length,
+      teamSize: r.result.teamSize,
+      playerCount:
+        r.result.teams.reduce((s, t) => s + t.players.length + (t.reserve ? 1 : 0), 0) +
+        r.result.bench.length,
+      spread: r.result.spread,
+    })),
+  });
+}
 
 /** Lưu kết quả chia team để xem lại qua link /result/[id]. */
 export async function POST(req: Request) {

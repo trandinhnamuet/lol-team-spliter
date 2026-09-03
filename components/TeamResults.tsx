@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { rankLabel } from "@/lib/elo";
+import { opggUrl } from "@/lib/riot";
 import HexCorners from "@/components/hex/HexCorners";
 import RankCrest from "@/components/hex/RankCrest";
 import type { ResolvedPlayer, TeamResult } from "@/lib/types";
@@ -25,8 +26,9 @@ function tierColor(p: ResolvedPlayer): string {
   return TIER_COLORS[p.rank?.tier ?? "UNRANKED"] ?? "var(--color-steel-100)";
 }
 
-function PlayerRow({ p, index }: { p: ResolvedPlayer; index: number }) {
+function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; platform: string }) {
   const color = tierColor(p);
+  const link = p.gameName && p.tagLine ? opggUrl(p.gameName, p.tagLine, platform) : null;
   return (
     <li
       className="hex-player-row hex-reveal flex items-center gap-3 py-2 pr-1"
@@ -34,9 +36,21 @@ function PlayerRow({ p, index }: { p: ResolvedPlayer; index: number }) {
     >
       <RankCrest tier={p.rank?.tier ?? "UNRANKED"} color={color} size={26} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm leading-tight text-gold-100" title={p.input}>
-          {p.input}
-        </span>
+        {link ? (
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`Xem ${p.input} trên op.gg`}
+            className="block truncate text-sm leading-tight text-gold-100 underline decoration-gold-600/60 underline-offset-2 hover:text-magic-300 hover:decoration-magic-300"
+          >
+            {p.input}
+          </a>
+        ) : (
+          <span className="block truncate text-sm leading-tight text-gold-100" title={p.input}>
+            {p.input}
+          </span>
+        )}
         <span className="hex-badge mt-1" style={{ "--tier-color": color } as CSSProperties}>
           {rankLabel(p.rank)}
         </span>
@@ -56,6 +70,7 @@ export default function TeamResults({
   allowSave?: boolean;
 }) {
   const maxElo = Math.max(...result.teams.map((t) => t.totalElo), 1);
+  const platform = result.platform ?? "vn2";
   const validCount =
     result.teams.reduce((s, t) => s + t.players.length + (t.reserve ? 1 : 0), 0) +
     result.bench.length;
@@ -157,7 +172,7 @@ export default function TeamResults({
             </div>
             <ul className="divide-y divide-steel-700/60">
               {team.players.map((p, j) => (
-                <PlayerRow key={j} p={p} index={j} />
+                <PlayerRow key={j} p={p} index={j} platform={platform} />
               ))}
             </ul>
             {team.reserve && (
@@ -166,7 +181,7 @@ export default function TeamResults({
                   Dự bị
                 </p>
                 <ul className="opacity-85">
-                  <PlayerRow p={team.reserve} index={team.players.length} />
+                  <PlayerRow p={team.reserve} index={team.players.length} platform={platform} />
                 </ul>
               </div>
             )}
@@ -184,7 +199,7 @@ export default function TeamResults({
           </h3>
           <ul className="divide-y divide-steel-700/60">
             {result.bench.map((p, j) => (
-              <PlayerRow key={j} p={p} index={j} />
+              <PlayerRow key={j} p={p} index={j} platform={platform} />
             ))}
           </ul>
         </div>

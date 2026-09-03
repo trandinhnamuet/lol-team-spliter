@@ -6,6 +6,8 @@ import HexCorners from "@/components/hex/HexCorners";
 import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
+import { getStoredRegion } from "@/lib/region";
+import { opggUrl } from "@/lib/riot";
 import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
 import type { ResolvedPlayer, TeamResult, TournamentEvent } from "@/lib/types";
 
@@ -14,6 +16,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [platform, setPlatform] = useState("vn2");
   const [teamSize, setTeamSize] = useState("5");
   const [splitting, setSplitting] = useState(false);
   const [progress, setProgress] = useState<SplitProgress | null>(null);
@@ -45,6 +48,10 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     const timer = setInterval(refresh, 5000);
     return () => clearInterval(timer);
   }, [id, refresh]);
+
+  useEffect(() => {
+    setPlatform(getStoredRegion());
+  }, []);
 
   async function copyLink() {
     await navigator.clipboard.writeText(registerUrl);
@@ -79,7 +86,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setFailed([]);
     try {
       const data = await splitWithProgress(
-        { eventId: id, teamSize: parseTeamSize(teamSize) ?? 5 },
+        { eventId: id, teamSize: parseTeamSize(teamSize) ?? 5, platform: getStoredRegion() },
         setProgress
       );
       if (data.error) {
@@ -178,7 +185,15 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
             <HexCorners />
             {event.players.map((p) => (
               <li key={p.puuid} className="hex-player-row flex items-center gap-3 px-4 py-2.5 text-sm">
-                <span className="font-medium text-gold-100">{p.riotId}</span>
+                <a
+                  href={opggUrl(p.gameName, p.tagLine, platform)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Xem ${p.riotId} trên op.gg`}
+                  className="font-medium text-gold-100 underline decoration-gold-600/60 underline-offset-2 hover:text-magic-300 hover:decoration-magic-300"
+                >
+                  {p.riotId}
+                </a>
                 {p.displayName && <span className="text-steel-100">({p.displayName})</span>}
                 <span className="ml-auto font-mono text-xs text-steel-300">
                   {new Date(p.registeredAt).toLocaleTimeString("vi-VN")}

@@ -23,7 +23,7 @@ interface SplitEvent extends SplitOutcome {
  * Trả về kết quả cuối (result) hoặc error — không throw trừ lỗi mạng.
  */
 export async function splitWithProgress(
-  body: { riotIds?: string[]; eventId?: string; teamSize?: number },
+  body: { riotIds?: string[]; eventId?: string; teamSize?: number; platform?: string },
   onProgress: (p: SplitProgress) => void
 ): Promise<SplitOutcome> {
   const res = await fetch("/api/split", {

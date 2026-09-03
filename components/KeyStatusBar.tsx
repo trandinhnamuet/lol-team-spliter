@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
+import RegionSelect from "@/components/hex/RegionSelect";
 import type { KeyStatus } from "@/lib/types";
 
 interface KeyInfo {
@@ -71,7 +72,7 @@ export default function KeyStatusBar() {
 
   return (
     <div className="relative z-30 border-b border-gold-700/60 bg-abyss-950/80 px-4 py-2 text-sm backdrop-blur-sm">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3">
         {ui ? (
           <span className={`flex items-center gap-2.5 ${ui.cls}`}>
             <span className="hex-status-dot" style={{ "--dot-color": ui.dot } as CSSProperties} />
@@ -86,6 +87,7 @@ export default function KeyStatusBar() {
             Đang kiểm tra Riot key…
           </span>
         )}
+        <RegionSelect />
         <button onClick={() => setShowInput((v) => !v)} className="hex-btn hex-btn-ghost ml-auto">
           {showInput ? "Ẩn" : "Đổi key"}
         </button>

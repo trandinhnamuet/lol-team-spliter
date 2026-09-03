@@ -49,6 +49,8 @@ export interface TeamResult {
   bench: ResolvedPlayer[];
   spread: number; // chênh lệch max - min giữa các team
   teamSize: number; // số người mỗi team đã dùng để chia
+  /** Platform routing lúc chia (vn2, kr, na1...) — dùng để dựng link op.gg. */
+  platform?: string;
 }
 
 export interface EventPlayer {
