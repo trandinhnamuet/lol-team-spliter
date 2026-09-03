@@ -66,23 +66,24 @@ export function eloForRank(rank: RankInfo, eloMap: EloMap): number {
 }
 
 /** Elo cho người chưa rank mà cũng không có lịch sử đấu để ước lượng:
- *  gán theo cấp độ tài khoản — tài khoản càng lâu năm thì khả năng trình càng cao,
- *  trần ở Vàng II để không đoán quá tay. Key tra qua eloMap nên admin chỉnh bảng vẫn ăn. */
+ *  gán theo cấp độ tài khoản — tài khoản càng lâu năm thì khả năng trình càng cao.
+ *  Thang cố tình hào phóng, trần Lục Bảo II ở cấp 500+ (unrank lâu năm thường
+ *  là smurf/người bỏ rank chứ hiếm khi yếu). Key tra qua eloMap nên admin chỉnh bảng vẫn ăn. */
 export function eloForLevel(level: number, eloMap: EloMap): number {
   const key =
     level < 30
-      ? "IRON_II"
+      ? "BRONZE_IV"
       : level < 60
-        ? "BRONZE_IV"
+        ? "SILVER_III"
         : level < 120
-          ? "BRONZE_I"
+          ? "GOLD_IV"
           : level < 200
-            ? "SILVER_IV"
+            ? "GOLD_II"
             : level < 350
-              ? "SILVER_II"
+              ? "PLATINUM_III"
               : level < 500
-                ? "GOLD_IV"
-                : "GOLD_II";
+                ? "EMERALD_IV"
+                : "EMERALD_II";
   return eloMap[key] ?? eloMap.UNRANKED ?? 0;
 }
 
