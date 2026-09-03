@@ -12,8 +12,8 @@ const ALLOWED_QUEUES = new Set([
 
 // Giới hạn ngân sách request cho mỗi người được ước lượng (dev key: 100 req/2 phút).
 const MAX_MATCHES = 3; // số trận dùng làm mẫu
-const MAX_LOOKUPS = 12; // số lần tra rank người cùng trận
-const MIN_SAMPLES = 4; // tối thiểu bấy nhiêu người có rank mới tin kết quả
+const MAX_LOOKUPS = 18; // số lần tra rank người cùng trận (lobby URF/ARAM nhiều người unranked)
+const MIN_SAMPLES = 3; // tối thiểu bấy nhiêu người có rank mới tin kết quả
 
 export interface MmrEstimate {
   elo: number;
