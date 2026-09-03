@@ -78,6 +78,15 @@ export async function createEvent(name: string): Promise<TournamentEvent> {
   return event;
 }
 
+/** Xoá hẳn một sự kiện (kèm danh sách đăng ký của nó). */
+export async function deleteEvent(id: string): Promise<boolean> {
+  const events = await listEvents();
+  const remaining = events.filter((e) => e.id !== id);
+  if (remaining.length === events.length) return false;
+  await writeJson(EVENTS_FILE, remaining);
+  return true;
+}
+
 export async function saveResult(result: TeamResult, failed: ResolvedPlayer[]): Promise<SavedResult> {
   const results = await readJson<SavedResult[]>(RESULTS_FILE, []);
   const saved: SavedResult = {

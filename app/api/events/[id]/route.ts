@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getEvent, updateEvent } from "@/lib/store";
+import { deleteEvent, getEvent, updateEvent } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
@@ -28,4 +28,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: result }, { status: 404 });
   }
   return NextResponse.json({ event: result });
+}
+
+/** Xoá hẳn sự kiện — mất luôn danh sách đã đăng ký, không hoàn lại được. */
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const removed = await deleteEvent(id);
+  if (!removed) {
+    return NextResponse.json({ error: "Không tìm thấy sự kiện" }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
 }

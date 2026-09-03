@@ -18,17 +18,77 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [events, setEvents] = useState<EventSummary[]>([]);
+  const [origin, setOrigin] = useState("");
+  const [copiedId, setCopiedId] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [eventError, setEventError] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
 
   useEffect(() => {
+    setOrigin(window.location.origin);
     fetch("/api/elo", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setEloMap(d.eloMap))
       .catch(() => setMessage("Không tải được cấu hình elo"));
-    fetch("/api/events", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => setEvents(d.events ?? []))
-      .catch(() => {});
+    void refreshEvents();
   }, []);
+
+  async function refreshEvents() {
+    try {
+      const res = await fetch("/api/events", { cache: "no-store" });
+      const data = await res.json();
+      setEvents(data.events ?? []);
+    } catch {
+      setEventError("Không tải được danh sách sự kiện");
+    }
+  }
+
+  async function copyRegisterLink(id: string) {
+    await navigator.clipboard.writeText(`${origin}/register/${id}`);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(""), 1500);
+  }
+
+  async function toggleOpen(id: string, open: boolean) {
+    setBusyId(id);
+    setEventError("");
+    try {
+      const res = await fetch(`/api/events/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ open }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setEventError(data.error ?? "Không đổi được trạng thái sự kiện");
+        return;
+      }
+      await refreshEvents();
+    } catch {
+      setEventError("Lỗi kết nối server");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function removeEvent(id: string) {
+    setBusyId(id);
+    setEventError("");
+    try {
+      const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setEventError(data.error ?? "Không xoá được sự kiện");
+        return;
+      }
+      setConfirmDeleteId("");
+      await refreshEvents();
+    } catch {
+      setEventError("Lỗi kết nối server");
+    } finally {
+      setBusyId("");
+    }
+  }
 
   function setValue(key: string, value: string) {
     setEloMap((m) => (m ? { ...m, [key]: Number(value) || 0 } : m));
@@ -157,26 +217,81 @@ export default function AdminPage() {
 
       <section className="hex-reveal space-y-3" style={{ animationDelay: "160ms" }}>
         <h2 className="hex-section-title">Sự kiện đăng ký</h2>
+        {eventError && <p className="text-sm text-blood-300">{eventError}</p>}
         {events.length === 0 ? (
           <p className="text-sm text-steel-100">Chưa có sự kiện nào.</p>
         ) : (
           <ul className="hex-panel relative divide-y divide-steel-700/60">
             <HexCorners />
             {events.map((e) => (
-              <li key={e.id} className="hex-player-row flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
-                <Link
-                  href={`/event/${e.id}`}
-                  className="font-medium text-magic-300 transition-colors hover:text-magic-100 hover:[text-shadow:0_0_8px_rgba(10,200,185,0.6)]"
-                >
-                  {e.name}
-                </Link>
-                <span className="text-steel-100">{e.playerCount} người</span>
-                <span className={e.open ? "text-magic-300" : "text-blood-300"}>
-                  {e.open ? "Đang mở" : "Đã đóng"}
-                </span>
-                <span className="ml-auto font-mono text-xs text-steel-300">
-                  {new Date(e.createdAt).toLocaleString("vi-VN")}
-                </span>
+              <li key={e.id} className="hex-player-row space-y-2 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Link
+                    href={`/event/${e.id}`}
+                    className="font-medium text-magic-300 transition-colors hover:text-magic-100 hover:[text-shadow:0_0_8px_rgba(10,200,185,0.6)]"
+                  >
+                    {e.name}
+                  </Link>
+                  <span className="text-steel-100">{e.playerCount} người</span>
+                  <span className={e.open ? "text-magic-300" : "text-blood-300"}>
+                    {e.open ? "Đang mở" : "Đã đóng"}
+                  </span>
+                  <span className="ml-auto font-mono text-xs text-steel-300">
+                    {new Date(e.createdAt).toLocaleString("vi-VN")}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <code className="hex-code min-w-0 flex-1 basis-64 truncate text-xs">
+                    {origin ? `${origin}/register/${e.id}` : `/register/${e.id}`}
+                  </code>
+                  <button
+                    onClick={() => copyRegisterLink(e.id)}
+                    className="hex-btn hex-btn-ghost"
+                    title="Copy link đăng ký để gửi cho game thủ"
+                  >
+                    {copiedId === e.id ? (
+                      <span className="text-magic-300">✓ Đã copy</span>
+                    ) : (
+                      "Copy link"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => toggleOpen(e.id, !e.open)}
+                    disabled={busyId === e.id}
+                    className="hex-btn hex-btn-ghost"
+                  >
+                    {e.open ? "Đóng đăng ký" : "Mở lại đăng ký"}
+                  </button>
+                  {confirmDeleteId === e.id ? (
+                    <>
+                      <span className="text-xs text-blood-300">
+                        Xoá vĩnh viễn cả {e.playerCount} người đã đăng ký?
+                      </span>
+                      <button
+                        onClick={() => removeEvent(e.id)}
+                        disabled={busyId === e.id}
+                        className="hex-btn hex-btn-ghost hex-btn-danger"
+                      >
+                        {busyId === e.id ? "Đang xoá…" : "Xoá thật"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId("")}
+                        className="hex-btn hex-btn-ghost"
+                      >
+                        Huỷ
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(e.id)}
+                      className="hex-btn hex-btn-ghost hex-btn-danger"
+                      title="Xoá sự kiện"
+                    >
+                      Xoá
+                    </button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
