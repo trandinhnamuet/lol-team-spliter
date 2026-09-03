@@ -4,9 +4,12 @@ import { eloForRank } from "@/lib/elo";
 import { isKnownRegion } from "@/lib/region";
 import {
   getAccountByRiotId,
+  getDdragonVersion,
   getRankByPuuid,
+  getSummonerByPuuid,
   normalizeRiotId,
   parseRiotId,
+  profileIconUrl,
   RiotApiError,
 } from "@/lib/riot";
 import { getConfig, getEvent } from "@/lib/store";
@@ -91,6 +94,7 @@ export async function POST(req: Request) {
       try {
         send({ type: "start", total: inputs.length });
 
+        const ddVersion = await getDdragonVersion();
         const resolved: ResolvedPlayer[] = [];
         let done = 0;
         for (const input of inputs) {
@@ -123,6 +127,20 @@ export async function POST(req: Request) {
             }
 
             const rank = await getRankByPuuid(cfg.riotApiKey, platform, puuid);
+
+            // Icon + cấp độ tài khoản: lỗi ở đây không làm hỏng người chơi, chỉ thiếu avatar
+            let avatarUrl: string | undefined;
+            let summonerLevel: number | undefined;
+            try {
+              const summoner = await getSummonerByPuuid(cfg.riotApiKey, platform, puuid);
+              if (summoner) {
+                avatarUrl = profileIconUrl(ddVersion, summoner.profileIconId);
+                summonerLevel = summoner.summonerLevel;
+              }
+            } catch {
+              /* bỏ qua — hiển thị không có avatar */
+            }
+
             resolved.push({
               input: input.label,
               ok: true,
@@ -131,6 +149,8 @@ export async function POST(req: Request) {
               puuid,
               rank,
               elo: eloForRank(rank, cfg.eloMap),
+              avatarUrl,
+              summonerLevel,
             });
           } catch (e) {
             if (e instanceof RiotApiError && (e.status === 401 || e.status === 403)) {

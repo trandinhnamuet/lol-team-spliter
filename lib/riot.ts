@@ -109,6 +109,55 @@ export async function getRankByPuuid(
   };
 }
 
+export interface SummonerInfo {
+  profileIconId: number;
+  summonerLevel: number;
+}
+
+/** Lấy icon đại diện + cấp độ tài khoản theo PUUID (summoner-v4). */
+export async function getSummonerByPuuid(
+  apiKey: string,
+  platform: string,
+  puuid: string
+): Promise<SummonerInfo | null> {
+  const url = `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
+  const res = await riotFetch(url, apiKey);
+  if (!res.ok) return null;
+  const data = (await res.json()) as { profileIconId?: number; summonerLevel?: number };
+  if (typeof data.profileIconId !== "number") return null;
+  return { profileIconId: data.profileIconId, summonerLevel: data.summonerLevel ?? 0 };
+}
+
+// Cache version Data Dragon trong bộ nhớ tiến trình — version game đổi ~2 tuần/lần.
+let ddragonVersion = "15.1.1"; // fallback nếu chưa fetch được
+let ddragonFetchedAt = 0;
+const DDRAGON_TTL_MS = 6 * 60 * 60 * 1000;
+
+/** Version Data Dragon mới nhất (cache 6 giờ). */
+export async function getDdragonVersion(): Promise<string> {
+  if (Date.now() - ddragonFetchedAt < DDRAGON_TTL_MS) return ddragonVersion;
+  try {
+    const res = await fetch("https://ddragon.leagueoflegends.com/api/versions.json", {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const versions = (await res.json()) as string[];
+      if (Array.isArray(versions) && versions[0]) {
+        ddragonVersion = versions[0];
+        ddragonFetchedAt = Date.now();
+      }
+    }
+  } catch {
+    /* giữ version cũ/fallback */
+  }
+  return ddragonVersion;
+}
+
+/** URL ảnh icon đại diện từ CDN Data Dragon của Riot. */
+export function profileIconUrl(version: string, profileIconId: number): string {
+  return `https://ddragon.leagueoflegends.com/cdn/${version}/img/profileicon/${profileIconId}.png`;
+}
+
 /** Kiểm tra key còn hạn không bằng endpoint lol-status (miễn phí, nhẹ). */
 export async function checkKeyStatus(apiKey: string, platform: string): Promise<KeyStatus> {
   if (!apiKey) return "missing";

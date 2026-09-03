@@ -26,6 +26,34 @@ function tierColor(p: ResolvedPlayer): string {
   return TIER_COLORS[p.rank?.tier ?? "UNRANKED"] ?? "var(--color-steel-100)";
 }
 
+function PlayerAvatar({ p }: { p: ResolvedPlayer }) {
+  const [broken, setBroken] = useState(false);
+  if (!p.avatarUrl || broken) return null;
+  return (
+    <span className="relative shrink-0" style={{ width: 34, height: 34 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={p.avatarUrl}
+        alt=""
+        width={34}
+        height={34}
+        loading="lazy"
+        onError={() => setBroken(true)}
+        className="rounded-full border border-gold-600 object-cover"
+        style={{ boxShadow: "0 0 6px rgba(200, 170, 110, 0.35)" }}
+      />
+      {typeof p.summonerLevel === "number" && p.summonerLevel > 0 && (
+        <span
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm border border-gold-600 bg-abyss-950 px-1 font-mono text-[0.55rem] leading-tight text-gold-200"
+          title={`Cấp độ tài khoản: ${p.summonerLevel}`}
+        >
+          {p.summonerLevel}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; platform: string }) {
   const color = tierColor(p);
   const link = p.gameName && p.tagLine ? opggUrl(p.gameName, p.tagLine, platform) : null;
@@ -34,6 +62,7 @@ function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; p
       className="hex-player-row hex-reveal flex items-center gap-3 py-2 pr-1"
       style={{ animationDelay: `${240 + index * 70}ms`, "--tier-color": color } as CSSProperties}
     >
+      <PlayerAvatar p={p} />
       <RankCrest tier={p.rank?.tier ?? "UNRANKED"} color={color} size={26} />
       <span className="min-w-0 flex-1">
         {link ? (

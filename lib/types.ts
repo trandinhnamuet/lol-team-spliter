@@ -40,6 +40,10 @@ export interface ResolvedPlayer {
   puuid?: string;
   rank?: RankInfo;
   elo?: number;
+  /** URL icon đại diện (Data Dragon) — có thể thiếu ở kết quả lưu trước đây. */
+  avatarUrl?: string;
+  /** Cấp độ tài khoản. */
+  summonerLevel?: number;
 }
 
 export interface TeamResult {
