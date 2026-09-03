@@ -53,10 +53,21 @@ export class RiotApiError extends Error {
 }
 
 async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Response> {
-  const res = await fetch(url, {
-    headers: { "X-Riot-Token": apiKey },
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "X-Riot-Token": apiKey },
+      cache: "no-store",
+    });
+  } catch (e) {
+    // Lỗi tầng mạng (ECONNRESET, DNS...) — thử lại 1 nhịp ngắn trước khi bỏ cuộc
+    if (retries > 0) {
+      await new Promise((r) => setTimeout(r, 1000));
+      return riotFetch(url, apiKey, retries - 1);
+    }
+    const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : "";
+    throw new RiotApiError(0, `Lỗi mạng khi gọi Riot API${cause}`);
+  }
   if (res.status === 429 && retries > 0) {
     const wait = Number(res.headers.get("Retry-After") ?? "2");
     await new Promise((r) => setTimeout(r, Math.min(wait, 10) * 1000));
