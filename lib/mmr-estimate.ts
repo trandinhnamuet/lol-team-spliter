@@ -2,8 +2,13 @@ import { eloForRank } from "./elo";
 import { getMatchLite, getRankByPuuid, getRecentMatchIds, RiotApiError } from "./riot";
 import type { EloMap } from "./types";
 
-/** Các queue 5v5 dùng để ước lượng MMR: normal draft/blind, ranked đơn/linh hoạt, ARAM, quickplay. */
-const ALLOWED_QUEUES = new Set([400, 420, 430, 440, 450, 490]);
+/** Các queue PvP có matchmaking dùng để ước lượng MMR (loại trận bot/custom/tutorial):
+ *  400/430 normal draft/blind, 420/440 ranked đơn/linh hoạt, 450 ARAM, 480 Swiftplay,
+ *  490 quickplay, 700/720 Clash, 900/1010/1900 URF các loại, 1300 Nexus Blitz,
+ *  1400 Ultimate Spellbook, 1700/1710 Arena. */
+const ALLOWED_QUEUES = new Set([
+  400, 420, 430, 440, 450, 480, 490, 700, 720, 900, 1010, 1300, 1400, 1700, 1710, 1900,
+]);
 
 // Giới hạn ngân sách request cho mỗi người được ước lượng (dev key: 100 req/2 phút).
 const MAX_MATCHES = 3; // số trận dùng làm mẫu
