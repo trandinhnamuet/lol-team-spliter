@@ -146,8 +146,9 @@ export default function HomePage() {
                 Ước lượng MMR cho người chưa rank
               </span>{" "}
               — tra vài trận gần nhất qua Riot API, lấy rank trung vị của những người cùng trận
-              thay vì mặc định coi là Bạc IV. Chính xác hơn nhưng chậm hơn đáng kể và tốn thêm
-              lượt gọi API (dễ chạm rate limit nếu nhiều người chưa rank).
+              thay vì mặc định coi là Bạc IV; ai không có lịch sử đấu dùng được thì gán elo theo
+              cấp độ tài khoản. Chính xác hơn nhưng chậm hơn đáng kể và tốn thêm lượt gọi API
+              (dễ chạm rate limit nếu nhiều người chưa rank).
             </span>
           </label>
 

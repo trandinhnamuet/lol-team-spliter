@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { balanceTeams } from "@/lib/balance";
-import { eloForRank } from "@/lib/elo";
+import { eloForLevel, eloForRank } from "@/lib/elo";
 import { isKnownRegion } from "@/lib/region";
 import {
   getAccountByRiotId,
@@ -135,8 +135,22 @@ export async function POST(req: Request) {
 
             const rank = await getRankByPuuid(cfg.riotApiKey, platform, puuid);
 
+            // Icon + cấp độ tài khoản: lấy trước vì cấp độ còn dùng làm fallback ước lượng
+            let avatarUrl: string | undefined;
+            let summonerLevel: number | undefined;
+            try {
+              const summoner = await getSummonerByPuuid(cfg.riotApiKey, platform, puuid);
+              if (summoner) {
+                avatarUrl = profileIconUrl(ddVersion, summoner.profileIconId);
+                summonerLevel = summoner.summonerLevel;
+              }
+            } catch {
+              /* bỏ qua — hiển thị không có avatar */
+            }
+
             let elo = eloForRank(rank, cfg.eloMap);
             let eloEstimated: boolean | undefined;
+            let eloSource: "match" | "level" | undefined;
             let estimateSamples: number | undefined;
             if (rank.tier !== "UNRANKED") {
               leagueCache.set(puuid, elo);
@@ -159,21 +173,17 @@ export async function POST(req: Request) {
               if (est) {
                 elo = est.elo;
                 eloEstimated = true;
+                eloSource = "match";
                 estimateSamples = est.samples;
+              } else if (typeof summonerLevel === "number" && summonerLevel > 0) {
+                // Không có lịch sử đấu dùng được → gán elo theo cấp độ tài khoản
+                elo = eloForLevel(summonerLevel, cfg.eloMap);
+                eloEstimated = true;
+                eloSource = "level";
+                console.log(
+                  `[mmr-estimate] ${input.label}: fallback theo cấp độ ${summonerLevel} → elo ${elo}`
+                );
               }
-            }
-
-            // Icon + cấp độ tài khoản: lỗi ở đây không làm hỏng người chơi, chỉ thiếu avatar
-            let avatarUrl: string | undefined;
-            let summonerLevel: number | undefined;
-            try {
-              const summoner = await getSummonerByPuuid(cfg.riotApiKey, platform, puuid);
-              if (summoner) {
-                avatarUrl = profileIconUrl(ddVersion, summoner.profileIconId);
-                summonerLevel = summoner.summonerLevel;
-              }
-            } catch {
-              /* bỏ qua — hiển thị không có avatar */
             }
 
             resolved.push({
@@ -187,6 +197,7 @@ export async function POST(req: Request) {
               avatarUrl,
               summonerLevel,
               eloEstimated,
+              eloSource,
               estimateSamples,
             });
           } catch (e) {

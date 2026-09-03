@@ -85,9 +85,13 @@ function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; p
           {p.eloEstimated && (
             <span
               className="ml-1 text-magic-300"
-              title={`MMR ước lượng từ rank của người cùng trận gần đây (${p.estimateSamples ?? "?"} mẫu)`}
+              title={
+                p.eloSource === "level"
+                  ? `Không có lịch sử đấu phù hợp — elo gán theo cấp độ tài khoản (${p.summonerLevel ?? "?"})`
+                  : `MMR ước lượng từ rank của người cùng trận gần đây (${p.estimateSamples ?? "?"} mẫu)`
+              }
             >
-              · MMR ≈
+              {p.eloSource === "level" ? "· Cấp ≈" : "· MMR ≈"}
             </span>
           )}
         </span>

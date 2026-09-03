@@ -44,8 +44,10 @@ export interface ResolvedPlayer {
   avatarUrl?: string;
   /** Cấp độ tài khoản. */
   summonerLevel?: number;
-  /** true nếu elo là MMR ước lượng từ lịch sử đấu (chỉ áp dụng cho người chưa rank). */
+  /** true nếu elo là ước lượng (không phải từ rank thật, chỉ áp dụng cho người chưa rank). */
   eloEstimated?: boolean;
+  /** Nguồn ước lượng: từ lịch sử đấu hay từ cấp độ tài khoản. */
+  eloSource?: "match" | "level";
   /** Số người chơi có rank trong các trận gần đây dùng làm mẫu ước lượng. */
   estimateSamples?: number;
 }
