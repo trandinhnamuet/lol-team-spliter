@@ -25,6 +25,24 @@ export function clusterFor(platform: string): string {
   return PLATFORM_TO_CLUSTER[platform.toLowerCase()] ?? "asia";
 }
 
+/** Map platform -> regional routing của match-v5: KHÁC account-v1 —
+ *  các server Đông Nam Á (vn2, sg2...) dùng cluster "sea" thay vì "asia".
+ *  Gọi nhầm "asia" sẽ nhận HTTP 200 + mảng rỗng chứ không báo lỗi. */
+const PLATFORM_TO_MATCH_CLUSTER: Record<string, string> = {
+  vn2: "sea",
+  sg2: "sea",
+  ph2: "sea",
+  th2: "sea",
+  tw2: "sea",
+  oc1: "sea",
+  kr: "asia",
+  jp1: "asia",
+};
+
+export function matchClusterFor(platform: string): string {
+  return PLATFORM_TO_MATCH_CLUSTER[platform.toLowerCase()] ?? clusterFor(platform);
+}
+
 export class RiotApiError extends Error {
   constructor(
     public status: number,
@@ -135,12 +153,15 @@ export async function getRecentMatchIds(
   puuid: string,
   count = 8
 ): Promise<string[]> {
-  const cluster = clusterFor(platform);
+  const cluster = matchClusterFor(platform);
   const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?start=0&count=${count}`;
   const res = await riotFetch(url, apiKey);
   if (res.status === 401 || res.status === 403)
     throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.warn(`[match-v5] ids lỗi HTTP ${res.status} (cluster=${cluster}, puuid=${puuid.slice(0, 12)}…)`);
+    return [];
+  }
   const ids = (await res.json()) as unknown;
   return Array.isArray(ids) ? (ids as string[]) : [];
 }
@@ -157,12 +178,15 @@ export async function getMatchLite(
   platform: string,
   matchId: string
 ): Promise<MatchLite | null> {
-  const cluster = clusterFor(platform);
+  const cluster = matchClusterFor(platform);
   const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
   const res = await riotFetch(url, apiKey);
   if (res.status === 401 || res.status === 403)
     throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn(`[match-v5] match ${matchId} lỗi HTTP ${res.status} (cluster=${cluster})`);
+    return null;
+  }
   const data = (await res.json()) as {
     metadata?: { participants?: string[] };
     info?: { queueId?: number };

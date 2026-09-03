@@ -154,6 +154,7 @@ export async function POST(req: Request) {
                 puuid,
                 eloMap: cfg.eloMap,
                 leagueCache,
+                label: input.label,
               });
               if (est) {
                 elo = est.elo;

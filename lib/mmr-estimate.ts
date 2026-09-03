@@ -31,21 +31,29 @@ export async function estimateEloFromMatches(opts: {
   puuid: string;
   eloMap: EloMap;
   leagueCache: Map<string, number | null>;
+  /** Nhãn người chơi để ghi log (tên hiển thị/Riot ID). */
+  label?: string;
 }): Promise<MmrEstimate | null> {
   const { apiKey, platform, puuid, eloMap, leagueCache } = opts;
+  const tag = `[mmr-estimate] ${opts.label ?? puuid.slice(0, 12) + "…"}`;
 
   let matchIds: string[];
   try {
     matchIds = await getRecentMatchIds(apiKey, platform, puuid);
   } catch (e) {
     if (e instanceof RiotApiError && (e.status === 401 || e.status === 403)) throw e;
+    console.warn(`${tag}: lấy match ids thất bại —`, e instanceof Error ? e.message : e);
     return null;
   }
-  if (matchIds.length === 0) return null;
+  if (matchIds.length === 0) {
+    console.warn(`${tag}: không có trận nào gần đây (platform=${platform}) — bỏ qua ước lượng`);
+    return null;
+  }
 
   const elos: number[] = [];
   let matchesUsed = 0;
   let lookups = 0;
+  let skippedQueues = 0;
 
   for (const matchId of matchIds) {
     if (matchesUsed >= MAX_MATCHES || lookups >= MAX_LOOKUPS) break;
@@ -55,9 +63,14 @@ export async function estimateEloFromMatches(opts: {
       match = await getMatchLite(apiKey, platform, matchId);
     } catch (e) {
       if (e instanceof RiotApiError && (e.status === 401 || e.status === 403)) throw e;
+      console.warn(`${tag}: lỗi khi tải trận ${matchId} —`, e instanceof Error ? e.message : e);
       continue;
     }
-    if (!match || !ALLOWED_QUEUES.has(match.queueId)) continue;
+    if (!match) continue;
+    if (!ALLOWED_QUEUES.has(match.queueId)) {
+      skippedQueues++;
+      continue;
+    }
     matchesUsed++;
 
     for (const other of match.participantPuuids) {
@@ -83,10 +96,19 @@ export async function estimateEloFromMatches(opts: {
     }
   }
 
-  if (elos.length < MIN_SAMPLES) return null;
+  const stats =
+    `${matchIds.length} match ids, dùng ${matchesUsed} trận` +
+    ` (bỏ ${skippedQueues} trận sai queue), tra ${lookups} người, ${elos.length} mẫu có rank`;
+
+  if (elos.length < MIN_SAMPLES) {
+    console.warn(`${tag}: không đủ mẫu (cần ≥${MIN_SAMPLES}) — ${stats}`);
+    return null;
+  }
 
   const sorted = [...elos].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  return { elo: Math.round(median), samples: elos.length };
+  const result = { elo: Math.round(median), samples: elos.length };
+  console.log(`${tag}: elo ≈ ${result.elo} — ${stats}`);
+  return result;
 }
