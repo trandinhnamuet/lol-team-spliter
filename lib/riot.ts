@@ -52,28 +52,45 @@ export class RiotApiError extends Error {
   }
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * fetch có retry. `retries` là ngân sách retry lỗi mạng (ECONNRESET, DNS...);
+ * 429 có ngân sách RIÊNG rộng hơn vì rate limit là chuyện bình thường với danh sách dài —
+ * dev key chỉ cho 100 request / 2 phút nên phải kiên nhẫn chờ theo Retry-After,
+ * tuyệt đối không để người chơi bị loại chỉ vì 429. Truyền retries = 0 để tắt mọi retry
+ * (dùng cho check key nhanh).
+ */
 async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Response> {
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: { "X-Riot-Token": apiKey },
-      cache: "no-store",
-    });
-  } catch (e) {
-    // Lỗi tầng mạng (ECONNRESET, DNS...) — thử lại 1 nhịp ngắn trước khi bỏ cuộc
-    if (retries > 0) {
-      await new Promise((r) => setTimeout(r, 1000));
-      return riotFetch(url, apiKey, retries - 1);
+  let netRetries = retries;
+  let rateRetries = retries === 0 ? 0 : 6;
+  for (;;) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { "X-Riot-Token": apiKey },
+        cache: "no-store",
+      });
+    } catch (e) {
+      if (netRetries > 0) {
+        netRetries--;
+        await sleep(1000);
+        continue;
+      }
+      const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : "";
+      throw new RiotApiError(0, `Lỗi mạng khi gọi Riot API${cause}`);
     }
-    const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : "";
-    throw new RiotApiError(0, `Lỗi mạng khi gọi Riot API${cause}`);
+    if (res.status === 429 && rateRetries > 0) {
+      rateRetries--;
+      // Tôn trọng Retry-After (thường 1–120s), chờ tối đa 30s mỗi nhịp rồi thử lại
+      const retryAfter = Number(res.headers.get("Retry-After") ?? "5");
+      const wait = Math.min(Math.max(retryAfter, 1), 30) * 1000 + 500;
+      console.warn(`[riot] 429 rate limit — chờ ${Math.round(wait / 1000)}s rồi thử lại (còn ${rateRetries} lượt)`);
+      await sleep(wait);
+      continue;
+    }
+    return res;
   }
-  if (res.status === 429 && retries > 0) {
-    const wait = Number(res.headers.get("Retry-After") ?? "2");
-    await new Promise((r) => setTimeout(r, Math.min(wait, 10) * 1000));
-    return riotFetch(url, apiKey, retries - 1);
-  }
-  return res;
 }
 
 export interface RiotAccount {
@@ -97,6 +114,8 @@ export async function getAccountByRiotId(
   if (res.status === 404) return null;
   if (res.status === 401 || res.status === 403)
     throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (res.status === 429)
+    throw new RiotApiError(429, "Riot API quá tải (429) dù đã chờ thử lại — chia lại sau ít phút");
   if (!res.ok) throw new RiotApiError(res.status, `Riot API lỗi ${res.status}`);
   return (await res.json()) as RiotAccount;
 }
@@ -120,6 +139,8 @@ export async function getRankByPuuid(
   const res = await riotFetch(url, apiKey);
   if (res.status === 401 || res.status === 403)
     throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (res.status === 429)
+    throw new RiotApiError(429, "Riot API quá tải (429) dù đã chờ thử lại — chia lại sau ít phút");
   if (!res.ok) throw new RiotApiError(res.status, `Riot API lỗi ${res.status}`);
   const entries = (await res.json()) as LeagueEntry[];
   const solo = entries.find((e) => e.queueType === "RANKED_SOLO_5x5");

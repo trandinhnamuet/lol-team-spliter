@@ -94,7 +94,32 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      let closed = false;
+      const send = (obj: unknown) => {
+        if (closed) return;
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+        } catch {
+          closed = true; // client đã ngắt — các send sau thành no-op
+        }
+      };
+      let done = 0;
+      // Heartbeat: khi dính rate limit phải chờ Retry-After lâu, stream im lặng
+      // quá 60s sẽ bị nginx cắt — bơm 1 nhịp progress mỗi 15s để giữ kết nối.
+      const heartbeat = setInterval(
+        () => send({ type: "progress", done, total: inputs.length }),
+        15000
+      );
+      const finish = () => {
+        clearInterval(heartbeat);
+        if (closed) return;
+        closed = true;
+        try {
+          controller.close();
+        } catch {
+          /* stream đã đóng */
+        }
+      };
       try {
         send({ type: "start", total: inputs.length });
 
@@ -103,7 +128,6 @@ export async function POST(req: Request) {
         // Cache tra rank người-cùng-trận khi ước lượng MMR, dùng chung cả request
         // (người chơi trong danh sách cũng được seed vào để khỏi tra lại).
         const leagueCache = new Map<string, number | null>();
-        let done = 0;
         for (const input of inputs) {
           try {
             let puuid = input.puuid;
@@ -206,7 +230,7 @@ export async function POST(req: Request) {
                 type: "error",
                 error: "Riot API key hết hạn hoặc không hợp lệ. Vào Admin để nhập key mới.",
               });
-              controller.close();
+              finish();
               return;
             }
             const msg = e instanceof RiotApiError ? e.message : "Lỗi khi gọi Riot API";
@@ -224,20 +248,16 @@ export async function POST(req: Request) {
             error: "Không đủ người chơi hợp lệ để chia team",
             players: resolved,
           });
-          controller.close();
+          finish();
           return;
         }
 
         const result = balanceTeams(okPlayers, body.teamSize !== undefined ? teamSize : undefined);
         send({ type: "result", players: resolved, failed, result: { ...result, platform } });
-        controller.close();
+        finish();
       } catch {
-        try {
-          send({ type: "error", error: "Lỗi không xác định trên server" });
-          controller.close();
-        } catch {
-          /* stream đã đóng */
-        }
+        send({ type: "error", error: "Lỗi không xác định trên server" });
+        finish();
       }
     },
   });

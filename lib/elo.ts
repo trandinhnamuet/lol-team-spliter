@@ -51,16 +51,19 @@ export function defaultEloMap(): EloMap {
   return map;
 }
 
-/** Cộng LP vào elo cho rank Cao Thủ trở lên: 0.3 điểm/LP, trần 150 —
- *  Cao Thủ 500 LP (+150) vẫn dưới Đại Cao Thủ 0 LP (cách nhau 200 theo bảng mặc định). */
-const APEX_LP_FACTOR = 0.3;
-const APEX_LP_BONUS_CAP = 150;
+/** Cộng LP vào elo cho rank Cao Thủ trở lên theo đường cong bão hoà
+ *  `200 × LP / (LP + 400)`: LP càng cao bonus càng tăng (không bao giờ có 2 mức LP
+ *  chênh nhau đáng kể mà cùng elo), nhưng tiệm cận +200 chứ không chạm — tức luôn
+ *  dưới khoảng cách 200 điểm giữa các bậc Cao Thủ/Đại Cao Thủ/Thách Đấu.
+ *  Ví dụ: 100 LP → +40, 300 LP → +86, 539 LP → +115, 618 LP → +121, 2000 LP → +167. */
+const APEX_LP_BONUS_RANGE = 200;
+const APEX_LP_HALFWAY = 400; // số LP để đạt nửa bonus tối đa
 
 export function eloForRank(rank: RankInfo, eloMap: EloMap): number {
   const key = rankKey(rank.tier, rank.division);
   const base = eloMap[key] ?? eloMap.UNRANKED ?? 0;
   if (APEX_TIERS.includes(rank.tier as Tier) && rank.lp > 0) {
-    return base + Math.min(Math.round(rank.lp * APEX_LP_FACTOR), APEX_LP_BONUS_CAP);
+    return base + Math.round((APEX_LP_BONUS_RANGE * rank.lp) / (rank.lp + APEX_LP_HALFWAY));
   }
   return base;
 }
