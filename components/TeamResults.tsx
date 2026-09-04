@@ -57,51 +57,53 @@ function PlayerAvatar({ p }: { p: ResolvedPlayer }) {
 function PlayerRow({ p, index, platform }: { p: ResolvedPlayer; index: number; platform: string }) {
   const color = tierColor(p);
   const link = p.gameName && p.tagLine ? opggUrl(p.gameName, p.tagLine, platform) : null;
+  const Wrapper = link ? "a" : "div";
   return (
     <li
-      className="hex-player-row hex-reveal flex items-center gap-3 py-2 pr-1"
+      className="hex-player-row hex-reveal py-2 pr-1"
       style={{ animationDelay: `${240 + index * 70}ms`, "--tier-color": color } as CSSProperties}
     >
-      <PlayerAvatar p={p} />
-      <RankCrest tier={p.rank?.tier ?? "UNRANKED"} color={color} size={26} />
-      <span className="min-w-0 flex-1">
-        {link ? (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            title={`Xem ${p.input} trên op.gg`}
-            className="block truncate text-sm leading-tight text-gold-100 underline decoration-gold-600/60 underline-offset-2 hover:text-magic-300 hover:decoration-magic-300"
+      <Wrapper
+        {...(link
+          ? { href: link, target: "_blank", rel: "noopener noreferrer", title: `Xem ${p.input} trên op.gg` }
+          : {})}
+        className={`group flex items-center gap-3${link ? " cursor-pointer" : ""}`}
+      >
+        <PlayerAvatar p={p} />
+        <RankCrest tier={p.rank?.tier ?? "UNRANKED"} color={color} size={26} />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate text-sm leading-tight text-gold-100${
+              link
+                ? " underline decoration-gold-600/60 underline-offset-2 group-hover:text-magic-300 group-hover:decoration-magic-300"
+                : ""
+            }`}
           >
             {p.input}
-          </a>
-        ) : (
-          <span className="block truncate text-sm leading-tight text-gold-100" title={p.input}>
-            {p.input}
           </span>
-        )}
-        <span className="hex-badge mt-1" style={{ "--tier-color": color } as CSSProperties}>
-          {rankLabel(p.rank)}
-          {p.eloEstimated && (
-            <span
-              className="ml-1 text-magic-300"
-              title={
-                p.eloSource === "level"
-                  ? `Không có lịch sử đấu phù hợp — elo gán theo cấp độ tài khoản (${p.summonerLevel ?? "?"})`
-                  : `MMR ước lượng từ rank của người cùng trận gần đây (${p.estimateSamples ?? "?"} mẫu)`
-              }
-            >
-              {p.eloSource === "level" ? "· Cấp ≈" : "· MMR ≈"}
-            </span>
-          )}
+          <span className="hex-badge mt-1" style={{ "--tier-color": color } as CSSProperties}>
+            {rankLabel(p.rank)}
+            {p.eloEstimated && (
+              <span
+                className="ml-1 text-magic-300"
+                title={
+                  p.eloSource === "level"
+                    ? `Không có lịch sử đấu phù hợp — elo gán theo cấp độ tài khoản (${p.summonerLevel ?? "?"})`
+                    : `MMR ước lượng từ rank của người cùng trận gần đây (${p.estimateSamples ?? "?"} mẫu)`
+                }
+              >
+                {p.eloSource === "level" ? "· Cấp ≈" : "· MMR ≈"}
+              </span>
+            )}
+          </span>
         </span>
-      </span>
-      <span
-        className="shrink-0 text-right font-mono text-xs text-steel-100"
-        title={p.eloEstimated ? "Elo ước lượng từ lịch sử đấu" : undefined}
-      >
-        {p.eloEstimated ? `≈${p.elo}` : p.elo}
-      </span>
+        <span
+          className="shrink-0 text-right font-mono text-xs text-steel-100"
+          title={p.eloEstimated ? "Elo ước lượng từ lịch sử đấu" : undefined}
+        >
+          {p.eloEstimated ? `≈${p.elo}` : p.elo}
+        </span>
+      </Wrapper>
     </li>
   );
 }
