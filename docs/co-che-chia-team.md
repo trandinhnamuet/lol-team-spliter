@@ -113,6 +113,22 @@ Mỗi team hiển thị danh sách người chơi (rank, elo, link op.gg), tổn
 đầu trang ghi **spread** giữa các team. Kết quả có thể lưu thành link chia sẻ `/result/[id]`
 (lưu trong `data/results.json`).
 
+## Riot API key
+
+Key nhập ở thanh trạng thái đầu trang (nút **Đổi key**) hoặc `/admin`, lưu trong
+`data/config.json` — đọc lại từ đĩa ở mỗi request nên đổi key có tác dụng ngay,
+không cần restart app.
+
+- **Key phát triển (dev key) hết hạn sau 24 giờ**, phải vào
+  [developer.riotgames.com](https://developer.riotgames.com) bấm *Regenerate API Key* để lấy
+  key mới mỗi ngày. Bấm regenerate cũng **vô hiệu hoá key cũ ngay lập tức**. Muốn khỏi phải
+  đổi hằng ngày thì đăng ký *Personal API Key* (Riot duyệt vài ngày, hạn dài hơn và rate limit
+  cao hơn).
+- Key vừa tạo có thể mất **vài giây mới kích hoạt** — trong lúc đó Riot trả 403. Luồng lưu key
+  tự thử lại 3 nhịp cách nhau 2 giây trước khi báo lỗi.
+- **429 không phải là key hỏng**: Riot chỉ giới hạn tốc độ những key đã xác thực (key sai luôn
+  nhận 401/403), nên trạng thái key vẫn hiện "còn hạn" khi đang dính rate limit.
+
 ## Giới hạn đã biết
 
 - Riot **không cung cấp rank các mùa trước** qua API, nên "rank cũ" không tham gia tính elo —

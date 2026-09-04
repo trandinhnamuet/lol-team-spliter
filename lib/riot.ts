@@ -265,6 +265,9 @@ export async function checkKeyStatus(apiKey: string, platform: string): Promise<
     const url = `https://${platform}.api.riotgames.com/lol/status/v4/platform-data`;
     const res = await riotFetch(url, apiKey, 0);
     if (res.ok) return "valid";
+    // 429 = key ĐÃ xác thực được, chỉ đang bị giới hạn tốc độ (key sai luôn nhận 401/403).
+    // Coi là hợp lệ, nếu không thì mỗi lần chia danh sách dài sẽ báo nhầm "key hỏng".
+    if (res.status === 429) return "valid";
     if (res.status === 401 || res.status === 403) return "invalid";
     return "error";
   } catch {
