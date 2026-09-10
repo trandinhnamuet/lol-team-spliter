@@ -33,6 +33,7 @@ export default function KeyManager({ keys, onChanged }: { keys: KeyInfo[]; onCha
       const data = (await res.json()) as {
         error?: string;
         added?: string[];
+        addedScopes?: { hint: string; scope: "identity" | "matches-only" | null }[];
         rejected?: { hint: string; reason: string }[];
       };
       if (!res.ok) {
@@ -40,7 +41,16 @@ export default function KeyManager({ keys, onChanged }: { keys: KeyInfo[]; onCha
         return;
       }
       const parts: string[] = [];
-      if (data.added?.length) parts.push(`Đã thêm ${data.added.length} key (${data.added.join(", ")})`);
+      for (const a of data.addedScopes ?? []) {
+        parts.push(
+          a.scope === "matches-only"
+            ? `${a.hint}: đã thêm — KHÁC tài khoản Riot Developer với kho nên chỉ dùng tải chi tiết trận`
+            : a.scope === "identity"
+              ? `${a.hint}: đã thêm — cùng tài khoản với kho, dùng cho mọi request`
+              : `${a.hint}: đã thêm (phạm vi sẽ được thăm dò khi crawler chạy)`
+        );
+      }
+      if (!data.addedScopes?.length && data.added?.length) parts.push(`Đã thêm ${data.added.length} key`);
       for (const r of data.rejected ?? []) parts.push(`${r.hint}: ${r.reason}`);
       setMessage(parts.join(" · ") || "Không có key mới");
       if (data.added?.length) setInput("");
@@ -96,6 +106,28 @@ export default function KeyManager({ keys, onChanged }: { keys: KeyInfo[]; onCha
                 <span className="text-steel-100">
                   {k.status === "invalid" ? "Bị Riot từ chối" : k.status === "valid" ? "Hợp lệ" : "Chưa dùng"}
                 </span>
+                <span
+                  className="hex-badge"
+                  title={
+                    k.scope === "matches-only"
+                      ? "Riot mã hoá PUUID theo tài khoản developer: key này thuộc tài khoản khác nên không tra được rank/lịch sử theo PUUID của kho, chỉ tải chi tiết trận theo match id"
+                      : k.scope === "identity"
+                        ? "Cùng tài khoản Riot Developer với kho — dùng cho mọi request"
+                        : "Chưa thăm dò — crawler sẽ kiểm tra bằng 1 request khi chạy"
+                  }
+                  style={
+                    {
+                      "--tier-color":
+                        k.scope === "identity"
+                          ? "var(--color-magic-300)"
+                          : k.scope === "matches-only"
+                            ? "var(--color-gold-400)"
+                            : "var(--color-steel-100)",
+                    } as CSSProperties
+                  }
+                >
+                  {k.scope === "identity" ? "Định danh + trận" : k.scope === "matches-only" ? "Chỉ tải trận" : "Chưa rõ"}
+                </span>
                 <span className="font-mono text-steel-100">giới hạn {k.limits}</span>
                 <span className="font-mono text-steel-100">
                   còn <span className="text-gold-200">{k.available}</span>
@@ -133,10 +165,14 @@ export default function KeyManager({ keys, onChanged }: { keys: KeyInfo[]; onCha
               )}
             </button>
           </div>
-          <p className="text-xs text-steel-100">
-            Mỗi key có rate limit riêng (dev key: 20 request/giây, 100 request/2 phút). Crawler tự chọn key còn
-            nhiều lượt nhất cho từng request, nên thêm N key là nhân N tốc độ thu thập. Key chết (401/403) tự bị
-            loại 10 phút rồi thử lại.
+          <p className="text-xs leading-relaxed text-steel-100">
+            Mỗi key có rate limit riêng (dev key: 20 request/giây, 100 request/2 phút); crawler chọn key còn
+            nhiều lượt nhất cho từng request. <span className="text-gold-200">Lưu ý:</span> Riot mã hoá PUUID theo
+            từng tài khoản developer, nên key của tài khoản <em>khác</em> không tra được rank/lịch sử theo PUUID
+            trong kho — nó chỉ được dùng để tải chi tiết trận theo match id (phần chiếm đa số request), còn tra
+            rank và danh sách trận luôn đi qua key cùng tài khoản với kho (thường là key chính). Đổi key chính sang
+            tài khoản khác sẽ làm toàn bộ PUUID đã lưu không dùng được. Key chết (401/403) tự bị loại 10 phút rồi
+            thử lại.
           </p>
           {message && <p className="text-xs text-gold-200">{message}</p>}
         </div>

@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server";
-import { checkKeyStatus } from "@/lib/riot";
+import { checkKeyStatus, getRankByPuuid, RiotApiError } from "@/lib/riot";
 import { getLimiter, snapshotKeys } from "@/lib/riot-limiter";
+import { isDbConfigured, query } from "@/lib/stats/db";
 import { allRiotKeys, getConfig, saveConfig } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Thăm dò phạm vi key so với kho: gọi league-v4 với một PUUID đã có trong kho. Thành công → cùng
+ * tài khoản Riot Developer (identity); 400 "Exception decrypting" → khác tài khoản, chỉ tải trận.
+ * riotFetch tự đánh dấu vào limiter; hàm chỉ trả về nhãn để báo cho người dùng.
+ */
+async function probeScope(key: string): Promise<"identity" | "matches-only" | null> {
+  if (!isDbConfigured()) return null;
+  try {
+    const rows = await query<{ puuid: string; platform: string }>(
+      "SELECT puuid, platform FROM lol.players WHERE rank_fetched_at IS NOT NULL ORDER BY updated_at DESC LIMIT 1"
+    );
+    if (!rows[0]) return null;
+    await getRankByPuuid(key, rows[0].platform, rows[0].puuid);
+  } catch (e) {
+    if (!(e instanceof RiotApiError && e.code === "decrypt")) return getLimiter(key).scope;
+  }
+  return getLimiter(key).scope;
+}
 
 /** Danh sách key (che, chỉ 4 ký tự cuối) + trạng thái rate limit từng key. */
 export async function GET() {
@@ -25,6 +45,7 @@ export async function POST(req: Request) {
   const cfg = await getConfig();
   const existing = new Set(allRiotKeys(cfg));
   const added: string[] = [];
+  const addedScopes: { hint: string; scope: "identity" | "matches-only" | null }[] = [];
   const rejected: { hint: string; reason: string }[] = [];
   for (const key of candidates) {
     if (existing.has(key)) {
@@ -41,6 +62,7 @@ export async function POST(req: Request) {
     if (status === "valid") {
       added.push(key);
       existing.add(key);
+      addedScopes.push({ hint: `...${key.slice(-4)}`, scope: await probeScope(key) });
     } else {
       rejected.push({
         hint: `...${key.slice(-4)}`,
@@ -54,6 +76,7 @@ export async function POST(req: Request) {
   const next = await getConfig();
   return NextResponse.json({
     added: added.map((k) => `...${k.slice(-4)}`),
+    addedScopes,
     rejected,
     keys: snapshotKeys(allRiotKeys(next), next.riotApiKey),
   });

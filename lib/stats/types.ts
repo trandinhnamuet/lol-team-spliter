@@ -106,6 +106,12 @@ export interface KeyInfo {
   hint: string;
   primary: boolean;
   status: "valid" | "invalid" | "unknown";
+  /**
+   * identity: cùng tài khoản Riot Developer với kho → dùng cho mọi endpoint.
+   * matches-only: khác tài khoản → chỉ tải chi tiết trận (PUUID mã hoá theo app, không giải mã được).
+   * null: chưa thăm dò.
+   */
+  scope: "identity" | "matches-only" | null;
   /** Số request còn gửi được ngay lúc này theo cửa sổ chặt nhất. */
   available: number;
   /** Giới hạn app hiện biết, ví dụ "20/1s · 100/120s". */

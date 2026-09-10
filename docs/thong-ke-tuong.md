@@ -106,8 +106,29 @@ và `riotFetch` chờ limiter của key đó trước khi gửi:
 
 **Nhiều key:** thêm ở mục "Riot API keys" trong trang `/stats` (dán nhiều key, mỗi dòng một
 key; key được kiểm tra với Riot trước khi lưu vào `data/config.json` → `riotApiKeys`). Crawler
-dùng `KeyPool`: mỗi request chọn key có thời gian chờ ngắn nhất (hoà thì xoay vòng), nên N key
-≈ N lần tốc độ. Key chính (thanh trên cùng) luôn nằm trong pool; API `GET/POST/DELETE /api/keys`.
+dùng `KeyPool`: mỗi request chọn key có thời gian chờ ngắn nhất (hoà thì xoay vòng). Key chính
+(thanh trên cùng) luôn nằm trong pool; API `GET/POST/DELETE /api/keys`.
+
+**Ràng buộc quan trọng — PUUID mã hoá theo tài khoản developer** (xác nhận thực nghiệm 2026-09-10:
+cùng một trận, `metadata.participants` trả về PUUID khác nhau tuỳ key; PUUID lấy bằng key A gửi
+qua key B của tài khoản khác → 400 `Exception decrypting`). Hệ quả và cách xử lý:
+
+| Phạm vi key (`scope`) | Là gì | Được dùng cho |
+|---|---|---|
+| `identity` | cùng tài khoản Riot Developer với key đã xây kho | mọi endpoint: rank, match ids theo PUUID, account, tải trận |
+| `matches-only` | tài khoản khác | chỉ `GET /lol/match/v5/matches/{matchId}` (match id không mã hoá) |
+
+- Phạm vi được **thăm dò tự động** (1 request league-v4 với một PUUID trong kho) khi thêm key và
+  khi crawler gặp key chưa rõ; `riotFetch` nhận 400 `Exception decrypting` → đánh dấu
+  `matches-only`, request theo PUUID thành công → `identity`.
+- Trận tải bằng key `matches-only` vẫn ghi đủ 10 participants (tướng, thắng/thua, KDA, vị trí —
+  đủ cho thống kê) và `est_tier` lấy theo rank người được crawl, nhưng **không** đưa PUUID của nó
+  vào `players` (bản mã của tài khoản khác, không dùng lại được).
+- Vì tải trận chiếm đa số request (2 + N mỗi người), key khác tài khoản vẫn nhân tốc độ gần
+  tuyến tính; phần định danh (2 request/người) luôn đi qua key `identity`.
+- **Không được đổi key chính sang tài khoản khác** khi kho đã có dữ liệu: mọi PUUID đã lưu trở
+  thành không giải mã được → crawler pause với ghi chú "Không có key nào cùng tài khoản…". Kho
+  trống thì key chính lúc bắt đầu chính là "tài khoản gốc" của kho.
 
 ## 4. Thống kê (`lib/stats/queries.ts`)
 

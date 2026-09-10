@@ -7,7 +7,7 @@ import {
   RiotApiError,
   type MatchDetail,
 } from "@/lib/riot";
-import { KeyPool } from "@/lib/riot-limiter";
+import { getLimiter, KeyPool } from "@/lib/riot-limiter";
 import { allRiotKeys, getConfig } from "@/lib/store";
 import { query, withTransaction } from "./db";
 import type { CrawlJob, CrawlJobStatus, CrawlOptions } from "./types";
@@ -227,8 +227,22 @@ export async function startJob(opts: CrawlOptions): Promise<CrawlJob> {
   if (!parsed) throw new CrawlError("Sai định dạng Tên#TAG");
 
   const pool = new KeyPool(keys);
-  const key = pool.pick("riot/account/v1/accounts/by-riot-id");
-  if (!key) throw new CrawlError("Không còn Riot API key hợp lệ");
+  if (pool.usable().length === 0) throw new CrawlError("Không còn Riot API key hợp lệ");
+  // PUUID người gốc phải thuộc hệ mã hoá của kho → cần key identity. Kho đã có người: thăm dò key
+  // chưa rõ phạm vi bằng một PUUID trong kho. Kho trống: key chính chính là "tài khoản gốc" của kho.
+  const probe = await query<{ puuid: string; platform: string }>(
+    "SELECT puuid, platform FROM lol.players WHERE rank_fetched_at IS NOT NULL ORDER BY updated_at DESC LIMIT 1"
+  );
+  if (probe[0]) {
+    await ensureKeyScopes(pool, probe[0].platform, probe[0].puuid, (m) => console.log(`[crawler] ${m}`));
+  } else {
+    getLimiter(cfg.riotApiKey).markIdentity();
+  }
+  const key = pool.pick("riot/account/v1/accounts/by-riot-id", true);
+  if (!key)
+    throw new CrawlError(
+      "Không có key nào cùng tài khoản Riot Developer với kho dữ liệu (Riot mã hoá PUUID theo tài khoản) — dùng key của tài khoản đã thu thập trước đây"
+    );
   const account = await getAccountByRiotId(key, opts.platform, parsed.gameName, parsed.tagLine);
   if (!account) throw new CrawlError("Không tìm thấy tài khoản này trên Riot");
 
@@ -377,13 +391,14 @@ interface FrontierPlayer {
   game_name: string | null;
   tag_line: string | null;
   depth: number;
+  tier: string | null;
   rank_fetched_at: Date | null;
 }
 
 async function pickNext(job: CrawlJob): Promise<FrontierPlayer | null> {
   // maxDepth <= 0 = không giới hạn độ sâu
   const rows = await query<FrontierPlayer>(
-    `SELECT puuid, game_name, tag_line, depth, rank_fetched_at
+    `SELECT puuid, game_name, tag_line, depth, tier, rank_fetched_at
      FROM lol.players
      WHERE platform = $1 AND crawl_status = 'pending' AND ($2::int <= 0 OR depth <= $2)
      ORDER BY depth, created_at
@@ -473,10 +488,28 @@ async function runLoop(r: Runner) {
       }
 
       try {
+        await ensureKeyScopes(pool, job.platform, next.puuid, log);
+        if (pool.pick(METHOD_LEAGUE, true) === null) {
+          // Mọi key còn dùng được đều thuộc tài khoản Riot Developer khác với key đã xây kho →
+          // không giải mã được PUUID nào trong DB. Không thể tiếp tục cho tới khi có key đúng tài khoản.
+          await setJob(jobId, {
+            status: "paused",
+            note: "Không có key nào cùng tài khoản Riot Developer với kho dữ liệu — thêm lại key của tài khoản đã dùng để thu thập",
+            last_error:
+              "Riot mã hoá PUUID theo từng tài khoản developer; key hiện có trả 400 'Exception decrypting' cho PUUID trong kho",
+          });
+          log("không còn key định danh (identity) → paused");
+          return;
+        }
         await crawlPlayer(job, next, pool, r, log);
         consecutiveErrors = 0;
       } catch (e) {
         if (e instanceof RiotApiError) {
+          if (e.code === "decrypt") {
+            // Key vừa dùng đã bị đánh dấu matches-only; vòng sau sẽ chọn key khác hoặc pause nếu hết
+            await setJob(jobId, { last_error: "Một key không giải mã được PUUID — chuyển nó sang chỉ tải trận" });
+            continue;
+          }
           if (e.status === 429) {
             // Limiter đã chặn key đó theo Retry-After; nghỉ ngắn rồi để pool chọn key khác
             await setJob(jobId, { note: "Riot báo 429 dù đã chờ — nghỉ 20s…", last_error: e.message });
@@ -521,10 +554,32 @@ const METHOD_LEAGUE = "lol/league/v4/entries/by-puuid";
 const METHOD_IDS = "lol/match/v5/matches/by-puuid";
 const METHOD_MATCH = "lol/match/v5/matches";
 
-function pickKeyOrThrow(pool: KeyPool, method: string): string {
-  const key = pool.pick(method);
-  if (!key) throw new RiotApiError(403, "Không còn Riot API key hợp lệ");
+function pickKeyOrThrow(pool: KeyPool, method: string, needIdentity: boolean): string {
+  const key = pool.pick(method, needIdentity);
+  if (!key) {
+    if (needIdentity) throw new RiotApiError(400, "Không còn key cùng tài khoản với kho để tra PUUID", "decrypt");
+    throw new RiotApiError(403, "Không còn Riot API key hợp lệ");
+  }
   return key;
+}
+
+/**
+ * Thăm dò phạm vi các key chưa biết (1 request league-v4 mỗi key, một lần cho cả đời tiến trình):
+ * request theo PUUID thành công → key cùng tài khoản với kho (identity); Riot trả 400
+ * "Exception decrypting" → key thuộc tài khoản khác, chỉ dùng tải chi tiết trận (matches-only).
+ * Phải biết phạm vi TRƯỚC khi tải trận bằng key đó, vì PUUID trong response của key khác tài khoản
+ * không được phép lọt vào bảng players.
+ */
+async function ensureKeyScopes(pool: KeyPool, platform: string, probePuuid: string, log: (m: string) => void) {
+  for (const limiter of pool.unknownScope()) {
+    try {
+      await getRankByPuuid(limiter.key, platform, probePuuid); // riotFetch tự đánh dấu identity
+    } catch (e) {
+      if (e instanceof RiotApiError && (e.status === 401 || e.status === 403 || e.status === 429)) throw e;
+      /* decrypt → đã được đánh dấu matches-only trong riotFetch; lỗi khác → để lần sau thử lại */
+    }
+    log(`key ...${limiter.key.slice(-4)}: phạm vi = ${limiter.scope ?? "chưa rõ"}`);
+  }
 }
 
 async function crawlPlayer(
@@ -537,16 +592,18 @@ async function crawlPlayer(
   const label = p.game_name ? `${p.game_name}#${p.tag_line ?? ""}` : p.puuid.slice(0, 12) + "…";
   const counters: Counters = {};
 
-  // 1. Rank (bỏ qua nếu đã tra gần đây — tiết kiệm 1 request)
+  // 1. Rank (bỏ qua nếu đã tra gần đây — tiết kiệm 1 request). Endpoint theo PUUID → cần key identity.
+  let seedTier: string | null = p.tier;
   const rankStale = !p.rank_fetched_at || Date.now() - p.rank_fetched_at.getTime() > RANK_TTL_MS;
   if (rankStale) {
     await bumpJob(job.id, {}, `Tra rank ${label} (độ sâu ${p.depth})…`);
-    const key = pickKeyOrThrow(pool, METHOD_LEAGUE);
+    const key = pickKeyOrThrow(pool, METHOD_LEAGUE, true);
     counters.requests_made = (counters.requests_made ?? 0) + 1;
     let rankTier: string | null = null;
     try {
       const rank = await getRankByPuuid(key, job.platform, p.puuid);
       rankTier = rank.tier;
+      seedTier = rank.tier;
       await query(
         `UPDATE lol.players
          SET tier = $2, division = $3, lp = $4, rank_queue = $5, rank_fetched_at = now(), updated_at = now()
@@ -555,7 +612,10 @@ async function crawlPlayer(
       );
       counters.players_ranked = 1;
     } catch (e) {
-      if (e instanceof RiotApiError && (e.status === 401 || e.status === 403 || e.status === 429)) throw e;
+      // decrypt (key sai tài khoản) / key chết / 429: ném lên để runLoop đổi key hoặc pause — KHÔNG
+      // đánh dấu đã tra, nếu không người này bị coi là "đã xong" mà không có dữ liệu.
+      if (e instanceof RiotApiError && (e.code === "decrypt" || e.status === 401 || e.status === 403 || e.status === 429))
+        throw e;
       // lỗi lẻ: ghi nhận đã cố tra để không lặp vô hạn, vẫn crawl trận
       await query("UPDATE lol.players SET rank_fetched_at = now(), updated_at = now() WHERE puuid = $1", [p.puuid]);
     }
@@ -571,7 +631,7 @@ async function crawlPlayer(
   // 2. Danh sách match id (1 request)
   await bumpJob(job.id, counters, `Lấy lịch sử xếp hạng của ${label}…`);
   Object.keys(counters).forEach((k) => delete counters[k as keyof Counters]);
-  const idsKey = pickKeyOrThrow(pool, METHOD_IDS);
+  const idsKey = pickKeyOrThrow(pool, METHOD_IDS, true);
   counters.requests_made = 1;
   const ids = await getRankedMatchIds(idsKey, job.platform, p.puuid, {
     queueIds: job.queueIds,
@@ -589,15 +649,17 @@ async function crawlPlayer(
   await bumpJob(job.id, counters, `${label}: ${newIds.length}/${ids.length} trận mới cần tải…`);
   Object.keys(counters).forEach((k) => delete counters[k as keyof Counters]);
 
-  // 4. Tải trận mới (1 request / trận)
+  // 4. Tải trận mới (1 request / trận). Match id không mã hoá → MỌI key đều tải được, kể cả key
+  //    khác tài khoản (matches-only) — đây là phần chiếm đa số request nên nhân tốc độ theo số key.
   let added = 0;
   for (let i = 0; i < newIds.length; i++) {
     if (r.stopRequested) break;
-    const key = pickKeyOrThrow(pool, METHOD_MATCH);
+    const key = pickKeyOrThrow(pool, METHOD_MATCH, false);
+    const identityFetch = getLimiter(key).scope === "identity";
     const detail = await getMatchDetail(key, job.platform, newIds[i]);
     const c: Counters = { requests_made: 1 };
     if (detail && job.queueIds.includes(detail.queueId) && detail.participants.length > 0) {
-      const inserted = await insertMatch(job, p, detail);
+      const inserted = await insertMatch(job, p, detail, identityFetch, seedTier);
       if (inserted) {
         added++;
         c.matches_added = 1;
@@ -630,14 +692,30 @@ function patchOf(gameVersion: string | null): string | null {
   return m ? `${m[1]}.${m[2]}` : null;
 }
 
-/** Ghi trận + 10 người chơi; đưa người mới vào frontier. Trả false nếu trận đã tồn tại. */
-async function insertMatch(job: CrawlJob, seed: FrontierPlayer, m: MatchDetail): Promise<boolean> {
+/**
+ * Ghi trận + 10 người chơi; đưa người mới vào frontier. Trả false nếu trận đã tồn tại.
+ * `identityFetch` = false khi trận được tải bằng key khác tài khoản: PUUID trong response là bản
+ * mã của tài khoản đó → chỉ ghi participants (tướng/thắng-thua/KDA đủ cho thống kê), KHÔNG upsert
+ * vào players; bậc trận lấy theo rank người được crawl (seed) vì PUUID của seed không xuất hiện
+ * trong response dưới dạng giải mã được.
+ */
+async function insertMatch(
+  job: CrawlJob,
+  seed: FrontierPlayer,
+  m: MatchDetail,
+  identityFetch: boolean,
+  seedTier: string | null
+): Promise<boolean> {
   const puuids = m.participants.map((x) => x.puuid);
-  const known = await query<{ tier: string }>(
-    "SELECT tier FROM lol.players WHERE puuid = ANY($1::text[]) AND tier IS NOT NULL AND tier <> 'UNRANKED'",
-    [puuids]
-  );
-  const estTier = medianTier(known.map((k) => k.tier));
+  const known = identityFetch
+    ? await query<{ tier: string }>(
+        "SELECT tier FROM lol.players WHERE puuid = ANY($1::text[]) AND tier IS NOT NULL AND tier <> 'UNRANKED'",
+        [puuids]
+      )
+    : [];
+  const knownTiers = known.map((k) => k.tier);
+  if (!identityFetch && seedTier && seedTier !== "UNRANKED") knownTiers.push(seedTier);
+  const estTier = medianTier(knownTiers);
 
   return withTransaction(async (client) => {
     const ins = await client.query(
@@ -654,7 +732,7 @@ async function insertMatch(job: CrawlJob, seed: FrontierPlayer, m: MatchDetail):
         m.gameCreation,
         m.gameDuration,
         estTier,
-        known.length,
+        knownTiers.length,
       ]
     );
     if (ins.rowCount === 0) return false;
@@ -679,6 +757,9 @@ async function insertMatch(job: CrawlJob, seed: FrontierPlayer, m: MatchDetail):
         m.participants.map((x) => x.assists),
       ]
     );
+
+    // Trận tải bằng key khác tài khoản: PUUID không thuộc hệ mã hoá của kho → không đưa vào players
+    if (!identityFetch) return true;
 
     // Người mới → frontier ở độ sâu +1; người đã có chỉ cập nhật tên (đổi tên Riot ID)
     await client.query(

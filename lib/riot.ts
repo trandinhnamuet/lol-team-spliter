@@ -1,4 +1,4 @@
-import { getLimiter, methodKeyOf } from "./riot-limiter";
+import { DECRYPT_ERROR_RE, getLimiter, methodKeyOf } from "./riot-limiter";
 import type { KeyStatus, RankInfo } from "./types";
 
 /** Map platform routing -> regional routing (dùng cho account-v1). */
@@ -47,7 +47,9 @@ export function matchClusterFor(platform: string): string {
 export class RiotApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
+    /** "decrypt" = PUUID không thuộc app của key (Riot 400 "Exception decrypting"). */
+    public code?: "decrypt"
   ) {
     super(message);
   }
@@ -87,6 +89,19 @@ async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Resp
       throw new RiotApiError(0, `Lỗi mạng khi gọi Riot API${cause}`);
     }
     limiter.observe(method, res);
+    // PUUID mã hoá theo app: 400 "Exception decrypting" = key thuộc tài khoản Riot Developer khác
+    // với key đã xây kho → đánh dấu key chỉ dùng tải trận; ngược lại, request theo PUUID thành công
+    // chứng tỏ key cùng tài khoản. Chỉ xét endpoint có PUUID trong path (không phải tải trận).
+    const puuidEndpoint = /by-puuid|by-riot-id|\/accounts\//.test(url);
+    if (puuidEndpoint && res.status === 400) {
+      const text = await res.clone().text().catch(() => "");
+      if (DECRYPT_ERROR_RE.test(text)) {
+        limiter.markForeign();
+        throw new RiotApiError(400, "Key không giải mã được PUUID (khác tài khoản Riot Developer)", "decrypt");
+      }
+    } else if (puuidEndpoint && res.ok) {
+      limiter.markIdentity();
+    }
     if (res.status === 429 && rateRetries > 0) {
       rateRetries--;
       // Tôn trọng Retry-After (thường 1–120s), chờ tối đa 30s mỗi nhịp rồi thử lại
@@ -346,6 +361,7 @@ export async function getRankedMatchIds(
   if (res.status === 401 || res.status === 403)
     throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
   if (res.status === 429) throw new RiotApiError(429, "Riot API rate limit (429)");
+  if (res.status === 400) throw new RiotApiError(400, `Riot API lỗi 400 khi lấy match ids`);
   if (!res.ok) {
     console.warn(`[crawler] match ids lỗi HTTP ${res.status} (puuid=${puuid.slice(0, 12)}…)`);
     return [];

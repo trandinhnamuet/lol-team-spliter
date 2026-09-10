@@ -108,6 +108,20 @@ class WindowSet {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Phạm vi dùng của key so với kho dữ liệu:
+ *  - identity: cùng tài khoản Riot Developer với key đã xây kho → giải mã được PUUID trong DB,
+ *    dùng cho mọi endpoint (rank, match ids theo puuid, account, tải trận).
+ *  - matches-only: khác tài khoản → Riot trả 400 "Exception decrypting" cho PUUID của kho. Chỉ
+ *    dùng để tải chi tiết trận theo match id (không mã hoá); PUUID trong response của nó là bản mã
+ *    của tài khoản kia nên KHÔNG được đưa vào bảng players.
+ *  - null: chưa biết — sẽ được thăm dò (1 request league-v4) trước khi dùng.
+ */
+export type KeyScope = "identity" | "matches-only";
+
+/** Thông điệp Riot trả về khi id mã hoá không thuộc app của key. */
+export const DECRYPT_ERROR_RE = /Exception decrypting/i;
+
 export class KeyLimiter {
   private app = new WindowSet(DEFAULT_APP_LIMIT);
   private methods = new Map<string, WindowSet>();
@@ -115,10 +129,21 @@ export class KeyLimiter {
   private blockedUntil = 0;
   /** 401/403 gần nhất → không dùng key tới thời điểm này. */
   private invalidUntil = 0;
+  scope: KeyScope | null = null;
   requests = 0;
   lastStatus: number | null = null;
 
   constructor(readonly key: string) {}
+
+  /** Riot báo không giải mã được PUUID bằng key này → key thuộc tài khoản khác. */
+  markForeign() {
+    this.scope = "matches-only";
+  }
+
+  /** Một request theo PUUID thành công → key cùng tài khoản với kho. */
+  markIdentity() {
+    if (this.scope !== "matches-only") this.scope = "identity";
+  }
 
   private methodSet(method: string): WindowSet {
     let set = this.methods.get(method);
@@ -190,6 +215,7 @@ export class KeyLimiter {
   reset() {
     this.invalidUntil = 0;
     this.blockedUntil = 0;
+    this.scope = null;
   }
 
   status(): "valid" | "invalid" | "unknown" {
@@ -253,9 +279,21 @@ export class KeyPool {
     return this.limiters.filter((l) => l.isUsable(now));
   }
 
-  /** Key có thời gian chờ ngắn nhất cho method này; hoà thì xoay vòng để chia đều. Null nếu không còn key dùng được. */
-  pick(method: string): string | null {
-    const usable = this.usable();
+  /** Key dùng được mà chưa biết phạm vi — cần thăm dò trước khi dùng cho việc cần định danh / tải trận. */
+  unknownScope(): KeyLimiter[] {
+    return this.usable().filter((l) => l.scope === null);
+  }
+
+  /**
+   * Key có thời gian chờ ngắn nhất cho method này; hoà thì xoay vòng để chia đều.
+   * `needIdentity` = endpoint nhận PUUID (rank, match ids, account) → chỉ key scope "identity".
+   * Không cần định danh (tải trận theo match id) → mọi key đã biết phạm vi.
+   * Null nếu không còn key phù hợp.
+   */
+  pick(method: string, needIdentity = false): string | null {
+    const usable = this.usable().filter((l) =>
+      needIdentity ? l.scope === "identity" : l.scope !== null
+    );
     if (usable.length === 0) return null;
     const now = Date.now();
     let best: KeyLimiter | null = null;
@@ -285,6 +323,7 @@ export function snapshotKeys(keys: string[], primary: string) {
       hint: mask(k),
       primary: k === primary,
       status: l.status(),
+      scope: l.scope,
       available: l.available(now),
       limits: l.describeLimits(),
       waitMs: l.waitMs("lol/match/v5/matches", now),
