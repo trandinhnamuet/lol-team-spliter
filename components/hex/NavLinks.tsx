@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const LINKS: [href: string, label: string][] = [
   ["/", "Chia team"],
   ["/results", "Kết quả đã lưu"],
+  ["/stats", "Thống kê"],
   ["/admin", "Admin"],
 ];
 

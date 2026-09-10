@@ -34,6 +34,7 @@ export async function getConfig(): Promise<AppConfig> {
     riotApiKey: process.env.RIOT_API_KEY ?? "",
     platform: "vn2",
     eloMap: defaultEloMap(),
+    riotApiKeys: [],
   };
   const cfg = await readJson<Partial<AppConfig>>(CONFIG_FILE, {});
   return {
@@ -41,7 +42,13 @@ export async function getConfig(): Promise<AppConfig> {
     platform: cfg.platform ?? fallback.platform,
     // merge để rank mới (nếu Riot thêm) vẫn có giá trị mặc định
     eloMap: { ...fallback.eloMap, ...(cfg.eloMap ?? {}) },
+    riotApiKeys: Array.isArray(cfg.riotApiKeys) ? cfg.riotApiKeys.filter(Boolean) : [],
   };
+}
+
+/** Toàn bộ key dùng được (key chính + key phụ), bỏ trùng và rỗng. */
+export function allRiotKeys(cfg: AppConfig): string[] {
+  return Array.from(new Set([cfg.riotApiKey, ...cfg.riotApiKeys].map((k) => k.trim()).filter(Boolean)));
 }
 
 export async function saveConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
@@ -50,6 +57,7 @@ export async function saveConfig(patch: Partial<AppConfig>): Promise<AppConfig> 
     riotApiKey: patch.riotApiKey ?? current.riotApiKey,
     platform: patch.platform ?? current.platform,
     eloMap: patch.eloMap ?? current.eloMap,
+    riotApiKeys: patch.riotApiKeys ?? current.riotApiKeys,
   };
   await writeJson(CONFIG_FILE, next);
   return next;

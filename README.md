@@ -7,7 +7,12 @@ Chia team đấu tập/giải nội bộ Liên Minh Huyền Thoại cân bằng 
 - Tuỳ chọn ước lượng MMR cho người chưa rank qua lịch sử đấu hoặc cấp độ tài khoản.
 - Lưu kết quả thành link chia sẻ, cấu hình bảng elo trong trang Admin.
 
+- **Thống kê tướng theo rank** (`/stats`): crawl đệ quy lịch sử xếp hạng từ một ingame gốc vào
+  PostgreSQL (schema `lol`), tính tỉ lệ thắng / tỉ lệ chọn từng tướng, lọc theo bậc rank (chỉ Bạc,
+  Lục Bảo trở lên...). Rate limiter chủ động + hỗ trợ nhiều Riot API key xoay vòng.
+
 **Cơ chế chia team chi tiết: [docs/co-che-chia-team.md](docs/co-che-chia-team.md)**
+**Module thống kê: [docs/thong-ke-tuong.md](docs/thong-ke-tuong.md)**
 
 ## Chạy dev
 
@@ -19,5 +24,8 @@ npm run dev
 Mở http://localhost:3000, vào `/admin` nhập Riot API key (lấy tại
 [developer.riotgames.com](https://developer.riotgames.com)). Key và dữ liệu sự kiện/kết quả
 lưu trong `data/` (không commit).
+
+Module thống kê cần PostgreSQL: copy `.env.example` → `.env.local` và điền `DB_*` (bảng tự tạo trong
+schema `lol` khi dùng lần đầu). Không có DB thì các trang khác vẫn chạy bình thường.
 
 Production: build bằng `npm run build` rồi `npm start -- -p 3000` (đang chạy qua pm2 + nginx).

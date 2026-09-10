@@ -1,3 +1,4 @@
+import { getLimiter, methodKeyOf } from "./riot-limiter";
 import type { KeyStatus, RankInfo } from "./types";
 
 /** Map platform routing -> regional routing (dùng cho account-v1). */
@@ -64,8 +65,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Response> {
   let netRetries = retries;
   let rateRetries = retries === 0 ? 0 : 6;
+  // Chủ động chờ theo cửa sổ rate limit đã học của key này (xem riot-limiter.ts) —
+  // gần như không còn 429; nhánh xử lý 429 bên dưới chỉ là lưới an toàn.
+  const limiter = getLimiter(apiKey);
+  const method = methodKeyOf(url);
   for (;;) {
     let res: Response;
+    await limiter.acquire(method);
     try {
       res = await fetch(url, {
         headers: { "X-Riot-Token": apiKey },
@@ -80,6 +86,7 @@ async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Resp
       const cause = e instanceof Error && e.cause instanceof Error ? ` (${e.cause.message})` : "";
       throw new RiotApiError(0, `Lỗi mạng khi gọi Riot API${cause}`);
     }
+    limiter.observe(method, res);
     if (res.status === 429 && rateRetries > 0) {
       rateRetries--;
       // Tôn trọng Retry-After (thường 1–120s), chờ tối đa 30s mỗi nhịp rồi thử lại
@@ -316,4 +323,123 @@ export function parseRiotId(input: string): { gameName: string; tagLine: string 
   const tagLine = trimmed.slice(hashIdx + 1).trim();
   if (!gameName || !tagLine) return null;
   return { gameName, tagLine };
+}
+
+/* ======================= Module thống kê (crawler) ======================= */
+
+/**
+ * Lấy match ID cho crawler: chỉ trận xếp hạng. Một queue → lọc `queue=`;
+ * nhiều queue → `type=ranked` (Riot trả cả 420 + 440, crawler lọc lại theo queueId).
+ * Ném RiotApiError với 401/403 (key chết) và 429 (đã chờ Retry-After mà vẫn bị chặn)
+ * để caller quyết định dừng/nghỉ; lỗi khác trả mảng rỗng.
+ */
+export async function getRankedMatchIds(
+  apiKey: string,
+  platform: string,
+  puuid: string,
+  opts: { queueIds: number[]; count: number }
+): Promise<string[]> {
+  const cluster = matchClusterFor(platform);
+  const filter = opts.queueIds.length === 1 ? `queue=${opts.queueIds[0]}` : "type=ranked";
+  const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?${filter}&start=0&count=${opts.count}`;
+  const res = await riotFetch(url, apiKey);
+  if (res.status === 401 || res.status === 403)
+    throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (res.status === 429) throw new RiotApiError(429, "Riot API rate limit (429)");
+  if (!res.ok) {
+    console.warn(`[crawler] match ids lỗi HTTP ${res.status} (puuid=${puuid.slice(0, 12)}…)`);
+    return [];
+  }
+  const ids = (await res.json()) as unknown;
+  return Array.isArray(ids) ? (ids as string[]) : [];
+}
+
+export interface MatchParticipant {
+  puuid: string;
+  riotIdGameName: string | null;
+  riotIdTagline: string | null;
+  championId: number;
+  championName: string;
+  teamId: number;
+  teamPosition: string | null;
+  win: boolean;
+  kills: number;
+  deaths: number;
+  assists: number;
+}
+
+export interface MatchDetail {
+  matchId: string;
+  queueId: number;
+  gameVersion: string | null;
+  gameCreation: number | null;
+  gameDuration: number | null;
+  participants: MatchParticipant[];
+}
+
+/** Chi tiết trận cho thống kê: queue, patch và 10 người chơi (tướng, vị trí, thắng/thua, KDA). */
+export async function getMatchDetail(
+  apiKey: string,
+  platform: string,
+  matchId: string
+): Promise<MatchDetail | null> {
+  const cluster = matchClusterFor(platform);
+  const url = `https://${cluster}.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+  const res = await riotFetch(url, apiKey);
+  if (res.status === 401 || res.status === 403)
+    throw new RiotApiError(res.status, "Riot API key hết hạn hoặc không hợp lệ");
+  if (res.status === 429) throw new RiotApiError(429, "Riot API rate limit (429)");
+  if (!res.ok) {
+    console.warn(`[crawler] match ${matchId} lỗi HTTP ${res.status}`);
+    return null;
+  }
+  const data = (await res.json()) as {
+    metadata?: { matchId?: string };
+    info?: {
+      queueId?: number;
+      gameVersion?: string;
+      gameCreation?: number;
+      gameDuration?: number;
+      participants?: Array<{
+        puuid?: string;
+        riotIdGameName?: string;
+        riotIdTagline?: string;
+        championId?: number;
+        championName?: string;
+        teamId?: number;
+        teamPosition?: string;
+        win?: boolean;
+        kills?: number;
+        deaths?: number;
+        assists?: number;
+      }>;
+    };
+  };
+  const info = data.info;
+  if (!info || typeof info.queueId !== "number" || !Array.isArray(info.participants)) return null;
+  const participants: MatchParticipant[] = [];
+  for (const p of info.participants) {
+    if (!p.puuid || typeof p.championId !== "number") continue;
+    participants.push({
+      puuid: p.puuid,
+      riotIdGameName: p.riotIdGameName || null,
+      riotIdTagline: p.riotIdTagline || null,
+      championId: p.championId,
+      championName: p.championName ?? String(p.championId),
+      teamId: p.teamId ?? 0,
+      teamPosition: p.teamPosition || null,
+      win: Boolean(p.win),
+      kills: p.kills ?? 0,
+      deaths: p.deaths ?? 0,
+      assists: p.assists ?? 0,
+    });
+  }
+  return {
+    matchId: data.metadata?.matchId ?? matchId,
+    queueId: info.queueId,
+    gameVersion: info.gameVersion ?? null,
+    gameCreation: info.gameCreation ?? null,
+    gameDuration: info.gameDuration ?? null,
+    participants,
+  };
 }

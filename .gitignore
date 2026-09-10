@@ -43,3 +43,6 @@ next-env.d.ts
 # app data (chua Riot API key va du lieu su kien)
 /data/
 tsconfig.tsbuildinfo
+
+# mẫu env cho module thống kê (không chứa bí mật)
+!.env.example

@@ -20,6 +20,8 @@ export interface AppConfig {
   /** Platform routing: vn2, kr, na1, euw1... */
   platform: string;
   eloMap: EloMap;
+  /** Các key phụ dùng thêm cho crawler thống kê (xoay vòng cùng riotApiKey để nhân rate limit). */
+  riotApiKeys: string[];
 }
 
 export interface RankInfo {
