@@ -1078,3 +1078,30 @@ tr.hex-player-row::before {
     animation-iteration-count: 1;
   }
 }
+
+/* ---------- Nút nhạc nền ---------- */
+.hex-music-note {
+  display: inline-block;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--color-steel-100);
+  transition: color 0.2s ease;
+}
+.hex-music-note.is-playing {
+  color: var(--color-magic-300);
+  animation: hex-music-bob 1.1s ease-in-out infinite;
+}
+@keyframes hex-music-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(4deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hex-music-note.is-playing {
+    animation: none;
+  }
+}

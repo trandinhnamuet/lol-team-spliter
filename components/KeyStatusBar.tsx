@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
+import MusicPlayer from "@/components/hex/MusicPlayer";
 import RegionSelect from "@/components/hex/RegionSelect";
 import SoundToggle from "@/components/hex/SoundToggle";
 import type { KeyStatus } from "@/lib/types";
@@ -149,6 +150,7 @@ export default function KeyStatusBar() {
         <RegionSelect />
         {notice && <span className="text-xs text-magic-300">{notice}</span>}
         <div className="ml-auto flex items-center gap-2">
+          <MusicPlayer />
           <SoundToggle />
           <button
             onClick={() => setShowInput((v) => !v)}
