@@ -68,7 +68,7 @@ function getCtx(): AudioContext | null {
   if (!AC) return null;
   ctx = new AC();
   master = ctx.createGain();
-  master.gain.value = 0.9;
+  master.gain.value = 0.63; // giảm 30% so với mặc định 0.9
   master.connect(ctx.destination);
   return ctx;
 }

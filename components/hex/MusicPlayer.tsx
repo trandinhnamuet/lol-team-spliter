@@ -7,7 +7,7 @@ interface Track {
   title: string;
 }
 
-const VOLUME = 0.22;
+const VOLUME = 0.29; // tăng 30% so với mặc định 0.22
 const PREF_KEY = "hex-music-off"; // người dùng đã tắt nhạc thì lần sau không tự phát
 
 function readPref(): boolean {
