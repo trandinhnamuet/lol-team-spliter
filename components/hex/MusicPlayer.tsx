@@ -32,6 +32,7 @@ function pickRandom(tracks: Track[], exclude?: string): Track | null {
  */
 export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
   const tracksRef = useRef<Track[]>([]);
   const [track, setTrack] = useState<Track | null>(null);
   // readPref() an toàn trên server (localStorage không tồn tại -> catch -> false); không gây lệch
@@ -65,7 +66,12 @@ export default function MusicPlayer() {
       audio.src = `/music-theme/${encodeURIComponent(t.file)}`;
       tryPlay();
     };
-    const onGesture = () => {
+    const onGesture = (e: Event) => {
+      // Bỏ qua cử chỉ trên chính nút ♪ — nút tự lo việc phát/dừng qua toggle() bên dưới;
+      // nếu không loại trừ, pointerdown (chạy trước click) sẽ tranh chấp với toggle() trong
+      // cùng một lượt bấm (vừa mở khoá phát vừa bị toggle tắt ngay sau đó).
+      const target = e.target;
+      if (target instanceof Node && buttonRef.current?.contains(target)) return;
       if (audio.paused && !userOff && audio.src) tryPlay();
     };
     const onEnded = () => startTrack(pickRandom(tracksRef.current, track?.file));
@@ -104,7 +110,10 @@ export default function MusicPlayer() {
   }, []);
 
   function toggle() {
-    const next = !off;
+    // off=true -> bật lại. Đang "bật" nhưng chưa thật sự phát (blocked, chờ cử chỉ đầu tiên) ->
+    // click này CHÍNH LÀ cử chỉ đó, giữ nguyên trạng thái bật và chỉ thử phát lại, đừng lật thành tắt.
+    // Chỉ khi thật sự đang phát mới coi click là yêu cầu tắt.
+    const next = off ? false : blocked ? false : true;
     setOff(next);
     try {
       localStorage.setItem(PREF_KEY, next ? "1" : "0");
@@ -123,6 +132,7 @@ export default function MusicPlayer() {
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={toggle}
       className={`hex-btn hex-btn-ghost max-w-[240px] gap-2 px-2.5 ${off ? "opacity-70" : ""}`}
