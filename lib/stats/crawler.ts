@@ -578,7 +578,7 @@ async function acquireKey(
   jobId: number,
   r: Runner
 ): Promise<string> {
-  let noted = false;
+  let lastReason: "busy" | "headroom" | null = null;
   for (;;) {
     if (r.stopRequested) return pickKeyOrThrow(pool, method, needIdentity);
     const now = Date.now();
@@ -588,14 +588,16 @@ async function acquireKey(
     const key = pickKeyOrThrow(pool, method, needIdentity);
     const usesPrimary = key === primaryKey;
     if (!busy && !(lowHeadroom && usesPrimary)) return key;
-    if (!noted) {
-      noted = true;
+    // Ghi chú theo lý do hiện tại (đổi khi lý do đổi, ví dụ chia team xong nhưng key còn phải hồi)
+    const reason = busy ? "busy" : "headroom";
+    if (reason !== lastReason) {
+      lastReason = reason;
       await bumpJob(
         jobId,
         {},
         busy
           ? "Đang nhường Riot API cho lượt chia team…"
-          : "Chờ key chính hồi ngân sách (giữ 25% cho việc chia team)…"
+          : `Chờ key chính hồi ngân sách (giữ ${Math.round(CRAWLER_MIN_HEADROOM * 100)}% cho việc chia team)…`
       ).catch(() => undefined);
     }
     await sleep(busy ? 500 : 1000);
