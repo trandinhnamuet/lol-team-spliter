@@ -91,3 +91,39 @@ export interface SavedResult {
   result: TeamResult;
   failed: ResolvedPlayer[];
 }
+
+export type SplitJobStatus = "running" | "done" | "error";
+
+/** Nguồn danh sách của một lượt chia team: dán tay hay từ sự kiện đăng ký. */
+export interface SplitJobSource {
+  kind: "list" | "event";
+  eventId?: string;
+  eventName?: string;
+}
+
+/**
+ * Một lượt chia team chạy nền trên server, có link riêng `/split/[id]`.
+ * Job sống độc lập với tab trình duyệt: đóng tab thì vẫn chạy tiếp tới khi xong
+ * rồi tự lưu kết quả (`resultId`), mở lại link là xem được tiến trình/kết quả.
+ */
+export interface SplitJob {
+  id: string;
+  createdAt: string;
+  finishedAt?: string;
+  status: SplitJobStatus;
+  source: SplitJobSource;
+  teamSize: number;
+  platform: string;
+  estimateUnranked: boolean;
+  /** Số người đã tra xong / tổng số người. */
+  done: number;
+  total: number;
+  /** Dòng trạng thái phụ (ví dụ: đang ước lượng MMR cho người chưa rank). */
+  note?: string;
+  players?: ResolvedPlayer[];
+  failed?: ResolvedPlayer[];
+  result?: TeamResult;
+  error?: string;
+  /** id bản ghi trong results.json — job tự lưu kết quả khi chạy xong. */
+  resultId?: string;
+}

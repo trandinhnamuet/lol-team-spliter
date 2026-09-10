@@ -9,6 +9,29 @@ Danh sách Tên#TAG ──▶ Riot API (account, rank, level) ──▶ Elo từ
                           └─▶ Ước lượng MMR cho người chưa rank (match-v5)
 ```
 
+## 0. Lượt chia chạy nền (job)
+
+Code: `lib/split-job.ts`. Bấm "chia team" **không** giữ việc tra rank trong request của trình
+duyệt — server tạo một **job** rồi trả ngay id, client chuyển sang link riêng `/split/[id]`.
+
+```
+POST /api/split ──▶ tạo job, trả {id} ngay ──▶ client điều hướng /split/[id]
+                        │
+                        └─▶ vòng lặp tra rank chạy nền ──▶ chia team ──▶ tự lưu /result/[id]
+                                   ▲
+GET /api/split/[id] (NDJSON) ──────┘  stream tiến độ, nối lại được bất cứ lúc nào
+```
+
+Hệ quả:
+
+- **Đóng tab không dừng lượt chia.** Job chạy tới khi xong rồi **tự lưu kết quả** vào
+  `data/results.json`; mở lại `/split/[id]` là thấy kết quả kèm link `/result/[id]` vĩnh viễn.
+- Nhiều người mở cùng link job thì cùng xem một tiến độ; stream đứt (mạng chập chờn, nginx cắt)
+  thì client tự nối lại, có nhịp ping 15 giây để giữ kết nối.
+- Job lưu trong bộ nhớ tiến trình và ghi xuống `data/jobs.json` (giữ 100 job gần nhất). **Restart
+  server giết vòng lặp đang chạy** — job dở dang bị đánh dấu lỗi khi nạp lại, phải chia lại lượt mới.
+- Trong lúc job chạy, crawler thống kê nhường Riot API cho nó (`lib/riot-priority.ts`).
+
 ## 1. Tra cứu người chơi
 
 Với mỗi dòng `Tên#TAG` (hoặc người đã đăng ký qua link sự kiện, đã có sẵn PUUID):
@@ -21,7 +44,7 @@ Với mỗi dòng `Tên#TAG` (hoặc người đã đăng ký qua link sự ki�
    lượng bên dưới; lỗi ở bước này không loại người chơi, chỉ thiếu avatar).
 
 Khu vực tra cứu (VN, KR, NA...) chọn ở góc trên trang, mặc định theo cấu hình server (`vn2`).
-Kết quả trả về client theo stream NDJSON nên thanh tiến độ chạy theo từng người.
+Tiến độ chạy theo từng người, xem mục 0 về cách lượt chia được quản lý.
 
 ## 2. Quy đổi rank → elo
 
@@ -110,8 +133,8 @@ Với `n` người hợp lệ và cỡ team `s` (chọn trên UI, mặc định 
 ## 5. Kết quả
 
 Mỗi team hiển thị danh sách người chơi (rank, elo, link op.gg), tổng elo Σ và thanh so sánh;
-đầu trang ghi **spread** giữa các team. Kết quả có thể lưu thành link chia sẻ `/result/[id]`
-(lưu trong `data/results.json`).
+đầu trang ghi **spread** giữa các team. Job tự lưu kết quả khi chạy xong thành link chia sẻ
+`/result/[id]` (trong `data/results.json`, giữ 200 bản ghi gần nhất) — không cần bấm lưu tay.
 
 ## Riot API key
 

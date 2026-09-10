@@ -1,6 +1,11 @@
 "use client";
 
-import type { SplitProgress } from "@/lib/split-client";
+export interface SplitProgress {
+  done: number;
+  total: number;
+  /** Dòng trạng thái phụ từ server (ví dụ: đang ước lượng MMR cho người chưa rank). */
+  note?: string;
+}
 
 /** Thanh tiến độ tra rank qua Riot API: % + số người đã xong. */
 export default function SplitProgressBar({ progress }: { progress: SplitProgress }) {

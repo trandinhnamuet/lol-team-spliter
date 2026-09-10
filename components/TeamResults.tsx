@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { rankLabel } from "@/lib/elo";
 import { opggUrl } from "@/lib/riot";
@@ -112,10 +112,14 @@ export default function TeamResults({
   result,
   failed = [],
   allowSave = true,
+  savedResultId,
 }: {
   result: TeamResult;
   failed?: ResolvedPlayer[];
+  /** Cho hiện nút "Lưu kết quả". Tắt khi kết quả đã nằm sẵn trong results.json. */
   allowSave?: boolean;
+  /** Kết quả đã được lưu sẵn (job chạy nền tự lưu) — hiện luôn link xem lại. */
+  savedResultId?: string;
 }) {
   const maxElo = Math.max(...result.teams.map((t) => t.totalElo), 1);
   const platform = result.platform ?? "vn2";
@@ -127,6 +131,14 @@ export default function TeamResults({
   const [savedUrl, setSavedUrl] = useState("");
   const [saveError, setSaveError] = useState("");
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    // dựng link sau hydrate, qua microtask để không setState đồng bộ trong effect
+    if (!savedResultId) return;
+    void Promise.resolve().then(() =>
+      setSavedUrl(`${window.location.origin}/result/${savedResultId}`)
+    );
+  }, [savedResultId]);
 
   async function save() {
     setSaving(true);
@@ -171,10 +183,15 @@ export default function TeamResults({
         <span className="hex-sigma text-base font-bold">{result.spread}</span>
       </p>
 
-      {allowSave && (
+      {(allowSave || savedUrl) && (
         <div className="hex-reveal flex flex-wrap items-center justify-center gap-2" style={{ animationDelay: "260ms" }}>
           {savedUrl ? (
             <>
+              {!allowSave && (
+                <span className="font-display text-[0.6rem] font-bold uppercase tracking-[0.2em] text-magic-300">
+                  Đã tự lưu
+                </span>
+              )}
               <code className="hex-code max-w-full truncate">{savedUrl}</code>
               <button onClick={copySavedUrl} className="hex-btn hex-btn-ghost">
                 {copied ? <span className="text-magic-300">✓ Đã copy</span> : "Copy link"}

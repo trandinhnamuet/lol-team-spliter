@@ -1,31 +1,25 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { use, useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
-import MatchFoundModal from "@/components/hex/MatchFoundModal";
-import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
-import TeamResults from "@/components/TeamResults";
 import { getStoredRegion } from "@/lib/region";
 import { opggUrl } from "@/lib/riot";
-import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
-import type { ResolvedPlayer, TeamResult, TournamentEvent } from "@/lib/types";
+import { startSplit } from "@/lib/split-client";
+import type { TournamentEvent } from "@/lib/types";
 
 export default function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [platform, setPlatform] = useState("vn2");
   const [teamSize, setTeamSize] = useState("5");
   const [splitting, setSplitting] = useState(false);
-  const [progress, setProgress] = useState<SplitProgress | null>(null);
   const [error, setError] = useState("");
-  const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
-  const [result, setResult] = useState<TeamResult | null>(null);
-  const [showFound, setShowFound] = useState(false);
-  const resultsRef = useRef<HTMLDivElement>(null);
   const [registerUrl, setRegisterUrl] = useState("");
 
   const refresh = useCallback(async () => {
@@ -81,32 +75,21 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     if (res.ok) setEvent((await res.json()).event);
   }
 
+  /** Khởi động lượt chia rồi chuyển sang /split/[id] — job chạy trên server, đóng tab vẫn xong. */
   async function split() {
     setSplitting(true);
-    setProgress({ done: 0, total: 0 });
     setError("");
-    setResult(null);
-    setFailed([]);
-    setShowFound(false);
-    try {
-      const data = await splitWithProgress(
-        { eventId: id, teamSize: parseTeamSize(teamSize) ?? 5, platform: getStoredRegion() },
-        setProgress
-      );
-      if (data.error) {
-        setError(data.error);
-        setFailed((data.players ?? []).filter((p) => !p.ok));
-        return;
-      }
-      setResult(data.result ?? null);
-      setFailed(data.failed ?? []);
-      if (data.result) setShowFound(true);
-    } catch {
-      setError("Lỗi kết nối server");
-    } finally {
+    const { id: jobId, error: err } = await startSplit({
+      eventId: id,
+      teamSize: parseTeamSize(teamSize) ?? 5,
+      platform: getStoredRegion(),
+    });
+    if (!jobId) {
+      setError(err ?? "Có lỗi xảy ra");
       setSplitting(false);
-      setProgress(null);
+      return;
     }
+    router.push(`/split/${jobId}`);
   }
 
   if (notFound) {
@@ -178,7 +161,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
               {splitting ? (
                 <>
                   <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
-                  Đang tra rank &amp; chia team…
+                  Đang khởi động…
                 </>
               ) : (
                 "⬡ Lấy rank & chia team"
@@ -189,7 +172,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         {parseTeamSize(teamSize) === null && (
           <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
         )}
-        {splitting && progress && <SplitProgressBar progress={progress} />}
+        {error && <p className="text-sm text-blood-300">{error}</p>}
 
         {event.players.length === 0 ? (
           <p className="text-sm text-steel-100">Chưa có ai đăng ký.</p>
@@ -224,32 +207,6 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
         )}
       </div>
 
-      {error && <p className="text-sm text-blood-300">{error}</p>}
-      {failed.length > 0 && (
-        <div className="hex-alert hex-reveal p-4 text-sm">
-          <p className="mb-1.5 font-semibold text-blood-300">Không xử lý được {failed.length} người:</p>
-          <ul className="list-inside list-disc space-y-0.5 text-gold-100/85">
-            {failed.map((p, i) => (
-              <li key={i}>
-                {p.input} — {p.error}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {result && (
-        <div ref={resultsRef} className="scroll-mt-28">
-          <TeamResults result={result} failed={failed} />
-        </div>
-      )}
-
-      {showFound && result && (
-        <MatchFoundModal
-          subtitle={`${result.teams.length} đội · chênh lệch elo ${result.spread}`}
-          onView={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          onClose={() => setShowFound(false)}
-        />
-      )}
     </div>
   );
 }

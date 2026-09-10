@@ -1,81 +1,104 @@
-import type { ResolvedPlayer, TeamResult } from "./types";
+import type { SplitJob } from "./types";
 
-export interface SplitProgress {
-  done: number;
-  total: number;
-  /** Dòng trạng thái phụ từ server (ví dụ: đang ước lượng MMR cho người chưa rank). */
-  note?: string;
+export interface SplitRequestBody {
+  riotIds?: string[];
+  eventId?: string;
+  teamSize?: number;
+  platform?: string;
+  estimateUnranked?: boolean;
 }
 
-export interface SplitOutcome {
-  result?: TeamResult;
-  failed?: ResolvedPlayer[];
-  players?: ResolvedPlayer[];
-  error?: string;
+/** Thời gian chờ trước khi nối lại stream bị đứt giữa chừng. */
+const RECONNECT_MS = 1500;
+
+/**
+ * Khởi động một lượt chia team chạy nền. Trả về id của job để điều hướng sang `/split/[id]`,
+ * hoặc thông báo lỗi validate. Job đã chạy rồi thì không phụ thuộc vào tab này nữa.
+ */
+export async function startSplit(body: SplitRequestBody): Promise<{ id?: string; error?: string }> {
+  try {
+    const res = await fetch("/api/split", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+    if (!res.ok || !data.id) return { error: data.error ?? "Có lỗi xảy ra" };
+    return { id: data.id };
+  } catch {
+    return { error: "Lỗi kết nối server" };
+  }
 }
 
-interface SplitEvent extends SplitOutcome {
-  type: "start" | "progress" | "result" | "error";
-  done?: number;
-  total?: number;
-  note?: string;
+interface JobEvent {
+  type: "job" | "ping";
+  job?: SplitJob;
 }
 
 /**
- * Gọi /api/split và đọc stream NDJSON, báo tiến độ qua onProgress.
- * Trả về kết quả cuối (result) hoặc error — không throw trừ lỗi mạng.
+ * Theo dõi job qua stream NDJSON của `GET /api/split/[id]`, gọi onJob mỗi lần trạng thái đổi.
+ * Stream đứt giữa chừng (mạng chập chờn, nginx cắt) mà job còn chạy thì tự nối lại — job nằm
+ * trên server nên không mất gì.
+ *
+ * Trả về hàm huỷ theo dõi (gọi khi unmount).
  */
-export async function splitWithProgress(
-  body: {
-    riotIds?: string[];
-    eventId?: string;
-    teamSize?: number;
-    platform?: string;
-    estimateUnranked?: boolean;
-  },
-  onProgress: (p: SplitProgress) => void
-): Promise<SplitOutcome> {
-  const res = await fetch("/api/split", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  // Lỗi validate trước khi stream bắt đầu trả JSON thường
-  const contentType = res.headers.get("content-type") ?? "";
-  if (!res.ok || !contentType.includes("ndjson")) {
-    return (await res.json().catch(() => ({ error: "Có lỗi xảy ra" }))) as SplitOutcome;
-  }
-  if (!res.body) return { error: "Trình duyệt không hỗ trợ đọc stream" };
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let outcome: SplitOutcome = { error: "Kết nối bị ngắt giữa chừng" };
+export function watchSplitJob(
+  id: string,
+  onJob: (job: SplitJob) => void,
+  onMissing: (message: string) => void
+): () => void {
+  const ctrl = new AbortController();
+  let stopped = false;
+  let lastStatus: SplitJob["status"] | null = null;
 
   const handleLine = (line: string) => {
     if (!line.trim()) return;
-    let ev: SplitEvent;
+    let ev: JobEvent;
     try {
-      ev = JSON.parse(line) as SplitEvent;
+      ev = JSON.parse(line) as JobEvent;
     } catch {
       return;
     }
-    if (ev.type === "start" || ev.type === "progress") {
-      onProgress({ done: ev.done ?? 0, total: ev.total ?? 0, note: ev.note });
-    } else if (ev.type === "result" || ev.type === "error") {
-      outcome = { result: ev.result, failed: ev.failed, players: ev.players, error: ev.error };
+    if (ev.type === "job" && ev.job) {
+      lastStatus = ev.job.status;
+      onJob(ev.job);
     }
   };
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    lines.forEach(handleLine);
+  async function run() {
+    while (!stopped) {
+      try {
+        const res = await fetch(`/api/split/${id}`, { cache: "no-store", signal: ctrl.signal });
+        if (res.status === 404) {
+          onMissing("Không tìm thấy lượt chia team này (có thể đã quá cũ và bị dọn).");
+          return;
+        }
+        if (!res.ok || !res.body) throw new Error("stream lỗi");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          lines.forEach(handleLine);
+        }
+        handleLine(buffer);
+        // server chủ động đóng khi job kết thúc — chỉ nối lại nếu job vẫn đang chạy
+        if (stopped || lastStatus !== "running") return;
+      } catch {
+        if (stopped) return;
+      }
+      await new Promise((r) => setTimeout(r, RECONNECT_MS));
+    }
   }
-  handleLine(buffer);
-  return outcome;
+
+  void run();
+  return () => {
+    stopped = true;
+    ctrl.abort();
+  };
 }

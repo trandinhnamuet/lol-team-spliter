@@ -1,16 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
-import MatchFoundModal from "@/components/hex/MatchFoundModal";
-import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
-import TeamResults from "@/components/TeamResults";
 import { getStoredRegion } from "@/lib/region";
-import { splitWithProgress, type SplitProgress } from "@/lib/split-client";
-import type { ResolvedPlayer, TeamResult } from "@/lib/types";
+import { startSplit } from "@/lib/split-client";
 
 type Tab = "paste" | "event";
 
@@ -28,12 +24,7 @@ export default function HomePage() {
   const [teamSize, setTeamSize] = useState("5");
   const [estimateUnranked, setEstimateUnranked] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<SplitProgress | null>(null);
   const [error, setError] = useState("");
-  const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
-  const [result, setResult] = useState<TeamResult | null>(null);
-  const [showFound, setShowFound] = useState(false);
-  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Tab 2: tạo sự kiện
   const [eventName, setEventName] = useState("");
@@ -42,38 +33,24 @@ export default function HomePage() {
 
   const lineCount = rawList.split("\n").filter((l) => l.trim()).length;
 
+  /** Khởi động lượt chia rồi chuyển sang /split/[id] — từ đó job chạy trên server,
+   *  đóng tab không dừng nó lại và link luôn mở lại được. */
   async function split() {
     setLoading(true);
-    setProgress({ done: 0, total: 0 });
     setError("");
-    setResult(null);
-    setFailed([]);
-    setShowFound(false);
-    try {
-      const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
-      const data = await splitWithProgress(
-        {
-          riotIds,
-          teamSize: parseTeamSize(teamSize) ?? 5,
-          platform: getStoredRegion(),
-          estimateUnranked,
-        },
-        setProgress
-      );
-      if (data.error) {
-        setError(data.error);
-        setFailed((data.players ?? []).filter((p) => !p.ok));
-        return;
-      }
-      setResult(data.result ?? null);
-      setFailed(data.failed ?? []);
-      if (data.result) setShowFound(true);
-    } catch {
-      setError("Lỗi kết nối server");
-    } finally {
+    const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
+    const { id, error: err } = await startSplit({
+      riotIds,
+      teamSize: parseTeamSize(teamSize) ?? 5,
+      platform: getStoredRegion(),
+      estimateUnranked,
+    });
+    if (!id) {
+      setError(err ?? "Có lỗi xảy ra");
       setLoading(false);
-      setProgress(null);
+      return;
     }
+    router.push(`/split/${id}`);
   }
 
   async function createEvent() {
@@ -167,7 +144,7 @@ export default function HomePage() {
               {loading ? (
                 <>
                   <span className="hex-spinner" style={{ "--size": "15px" } as CSSProperties} />
-                  Đang tra rank &amp; chia team…
+                  Đang khởi động…
                 </>
               ) : (
                 "⬡ Lấy rank & chia team"
@@ -180,37 +157,13 @@ export default function HomePage() {
           {parseTeamSize(teamSize) === null && (
             <p className="text-xs text-blood-300">Số người mỗi team phải từ 1 đến 20.</p>
           )}
-          {loading && progress && <SplitProgressBar progress={progress} />}
+          <p className="text-xs text-steel-300">
+            Bấm chia là mở một lượt có link riêng — lượt đó chạy trên server nên đóng tab vẫn
+            xong và tự lưu kết quả.
+          </p>
 
           {error && <p className="hex-reveal text-sm text-blood-300">{error}</p>}
-          {failed.length > 0 && (
-            <div className="hex-alert hex-reveal p-4 text-sm">
-              <p className="mb-1.5 font-semibold text-blood-300">
-                Không xử lý được {failed.length} người (bị loại khỏi kết quả):
-              </p>
-              <ul className="list-inside list-disc space-y-0.5 text-gold-100/85">
-                {failed.map((p, i) => (
-                  <li key={i}>
-                    {p.input} — {p.error}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {result && (
-            <div ref={resultsRef} className="scroll-mt-28">
-              <TeamResults result={result} failed={failed} />
-            </div>
-          )}
         </div>
-      )}
-
-      {showFound && result && (
-        <MatchFoundModal
-          subtitle={`${result.teams.length} đội · chênh lệch elo ${result.spread}`}
-          onView={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          onClose={() => setShowFound(false)}
-        />
       )}
 
       {tab === "event" && (
