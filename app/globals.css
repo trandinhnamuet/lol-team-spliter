@@ -538,6 +538,11 @@ input[type="number"].hex-input::-webkit-inner-spin-button {
 .hex-player-row:hover::before {
   opacity: 1;
 }
+/* Trên <tr>, ::before (dù position:absolute) bị trình duyệt bọc thành một ô ẩn ở đầu dòng
+   → thân bảng lệch một cột so với tiêu đề. Bảng chỉ giữ hiệu ứng nền khi hover. */
+tr.hex-player-row::before {
+  display: none;
+}
 
 /* ---------- Badge rank (hình lục giác dẹt) ---------- */
 
