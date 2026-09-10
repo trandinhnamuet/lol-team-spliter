@@ -9,7 +9,8 @@ import { TIER_ORDER, tierColor, tierLabel } from "./tier-ui";
 
 const STATUS_UI: Record<string, { label: string; dot: string }> = {
   running: { label: "Đang thu thập", dot: "var(--color-magic-300)" },
-  paused: { label: "Tạm dừng", dot: "var(--color-gold-400)" },
+  paused: { label: "Tạm dừng (sẽ tự tiếp tục nếu là 24/7)", dot: "var(--color-gold-400)" },
+  stopped: { label: "Đã dừng", dot: "var(--color-gold-400)" },
   done: { label: "Hoàn tất", dot: "var(--color-tier-emerald)" },
   error: { label: "Lỗi", dot: "var(--color-blood-400)" },
 };
@@ -40,6 +41,7 @@ export default function CrawlPanel({
   const [matchesPerPlayer, setMatchesPerPlayer] = useState("20");
   const [maxPlayers, setMaxPlayers] = useState("200");
   const [maxDepth, setMaxDepth] = useState("3");
+  const [continuous, setContinuous] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,7 +59,16 @@ export default function CrawlPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           action === "start"
-            ? { action, platform, riotId, queueIds, matchesPerPlayer, maxPlayers, maxDepth }
+            ? {
+                action,
+                platform,
+                riotId,
+                queueIds,
+                matchesPerPlayer,
+                maxPlayers,
+                maxDepth,
+                autoRestart: continuous,
+              }
             : { action, platform }
         ),
       });
@@ -84,7 +95,8 @@ export default function CrawlPanel({
   }
 
   const ui = job ? STATUS_UI[job.status] : null;
-  const progressPct = job ? Math.min(100, Math.round((job.playersCrawled / job.maxPlayers) * 100)) : 0;
+  const unlimited = job ? job.maxPlayers <= 0 : false;
+  const progressPct = job && !unlimited ? Math.min(100, Math.round((job.playersCrawled / job.maxPlayers) * 100)) : 100;
   const tierTotal = summary ? Object.values(summary.tierCounts).reduce((s, c) => s + c, 0) : 0;
 
   return (
@@ -126,26 +138,47 @@ export default function CrawlPanel({
               Xếp hạng Linh Hoạt
             </label>
           </div>
+          <label className="flex cursor-pointer items-start gap-2.5 border border-gold-700/50 bg-abyss-950/50 px-3 py-2.5 text-sm text-steel-100">
+            <input
+              type="checkbox"
+              checked={continuous}
+              onChange={(e) => setContinuous(e.target.checked)}
+              disabled={running}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-magic-300,#0ac8b9)]"
+            />
+            <span>
+              <span className="font-semibold text-gold-100">Chạy liên tục 24/7 — không giới hạn</span> — không
+              dừng ở số người/độ sâu nào; khi hết người mới, tự làm mới dữ liệu người cũ nhất để bắt trận vừa
+              đấu. Tự &quot;Tiếp tục&quot; sau khi server khởi động lại hoặc sau khi được thêm key mới, tốc độ
+              hoàn toàn theo rate limit của key (không bao giờ vượt để tránh 429).
+            </span>
+          </label>
           <div className="grid grid-cols-3 gap-3">
             {(
               [
-                ["Trận / người", matchesPerPlayer, setMatchesPerPlayer, "1–100"],
-                ["Tối đa người", maxPlayers, setMaxPlayers, "dừng khi đủ"],
-                ["Độ sâu tối đa", maxDepth, setMaxDepth, "0 = chỉ người gốc"],
-              ] as [string, string, (v: string) => void, string][]
-            ).map(([label, value, set, hint]) => (
+                ["Trận / người", matchesPerPlayer, setMatchesPerPlayer, "1–100", false],
+                ["Tối đa người", maxPlayers, setMaxPlayers, "dừng khi đủ", continuous],
+                ["Độ sâu tối đa", maxDepth, setMaxDepth, "0 = chỉ người gốc", continuous],
+              ] as [string, string, (v: string) => void, string, boolean][]
+            ).map(([label, value, set, hint, lockedByContinuous]) => (
               <label key={label} className="block">
                 <span className="block font-display text-[0.55rem] font-bold uppercase tracking-[0.16em] text-steel-100">
                   {label}
                 </span>
-                <input
-                  type="number"
-                  value={value}
-                  onChange={(e) => set(e.target.value)}
-                  disabled={running}
-                  className="hex-input mt-1 px-2 py-1.5 font-mono text-sm"
-                />
-                <span className="block text-[0.62rem] text-steel-300">{hint}</span>
+                {lockedByContinuous ? (
+                  <span className="hex-input mt-1 flex items-center px-2 py-1.5 font-mono text-sm text-steel-300 opacity-60">
+                    Không giới hạn
+                  </span>
+                ) : (
+                  <input
+                    type="number"
+                    value={value}
+                    onChange={(e) => set(e.target.value)}
+                    disabled={running}
+                    className="hex-input mt-1 px-2 py-1.5 font-mono text-sm"
+                  />
+                )}
+                <span className="block text-[0.62rem] text-steel-300">{lockedByContinuous ? "chế độ 24/7" : hint}</span>
               </label>
             ))}
           </div>
@@ -168,10 +201,10 @@ export default function CrawlPanel({
             )}
             {running && (
               <button onClick={() => act("pause")} disabled={busy} className="hex-btn hex-btn-danger">
-                {busy ? "Đang dừng…" : "■ Tạm dừng"}
+                {busy ? "Đang dừng…" : "■ Dừng"}
               </button>
             )}
-            {!running && job && (job.status === "paused" || job.status === "error") && (
+            {!running && job && (job.status === "paused" || job.status === "stopped" || job.status === "error") && (
               <button onClick={() => act("resume")} disabled={busy} className="hex-btn">
                 ▶ Tiếp tục
               </button>
@@ -211,6 +244,11 @@ export default function CrawlPanel({
                 <span className="font-display text-[0.7rem] font-bold uppercase tracking-[0.18em] text-gold-100">
                   {ui.label}
                 </span>
+                {job.autoRestart && (
+                  <span className="hex-badge" style={{ "--tier-color": "var(--color-magic-300)" } as CSSProperties}>
+                    🔁 Liên tục 24/7
+                  </span>
+                )}
                 <span className="text-xs text-steel-100">
                   gốc <span className="font-mono text-gold-200">{job.rootRiotId}</span> · từ{" "}
                   {new Date(job.startedAt).toLocaleString("vi-VN")}
@@ -218,11 +256,17 @@ export default function CrawlPanel({
               </div>
               {job.note && <p className="truncate font-mono text-xs text-magic-100">{job.note}</p>}
               {job.lastError && <p className="text-xs text-blood-300">{job.lastError}</p>}
-              <div className="hex-progress-track">
-                <div className="hex-progress-fill" style={{ width: `${progressPct}%` }} />
-              </div>
+              {!unlimited && (
+                <div className="hex-progress-track">
+                  <div className="hex-progress-fill" style={{ width: `${progressPct}%` }} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <Tile label="Người đã tra" value={`${job.playersCrawled}/${job.maxPlayers}`} hint={`${progressPct}%`} />
+                <Tile
+                  label="Người đã tra"
+                  value={unlimited ? job.playersCrawled : `${job.playersCrawled}/${job.maxPlayers}`}
+                  hint={unlimited ? "không giới hạn — liên tục làm mới" : `${progressPct}%`}
+                />
                 <Tile label="Trận mới" value={job.matchesAdded} hint={`bỏ ${job.matchesSkipped} trận đã có`} />
                 <Tile label="Request Riot" value={job.requestsMade} hint={`${job.playersRanked} lượt tra rank`} />
               </div>

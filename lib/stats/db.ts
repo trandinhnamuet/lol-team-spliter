@@ -102,8 +102,9 @@ CREATE TABLE IF NOT EXISTS lol.crawl_jobs (
   status              text NOT NULL DEFAULT 'running', -- running | paused | done | error
   queue_ids           integer[] NOT NULL DEFAULT '{420}',
   matches_per_player  integer NOT NULL DEFAULT 20,
-  max_players         integer NOT NULL DEFAULT 200,
-  max_depth           integer NOT NULL DEFAULT 3,
+  max_players         integer NOT NULL DEFAULT 200,     -- <= 0 = khong gioi han
+  max_depth           integer NOT NULL DEFAULT 3,        -- <= 0 = khong gioi han
+  auto_restart        boolean NOT NULL DEFAULT false,    -- che do 24/7: khong dung, tu lam moi khi het frontier, tu resume
   players_crawled     integer NOT NULL DEFAULT 0,
   players_ranked      integer NOT NULL DEFAULT 0,
   matches_added       integer NOT NULL DEFAULT 0,
@@ -115,7 +116,12 @@ CREATE TABLE IF NOT EXISTS lol.crawl_jobs (
   updated_at          timestamptz NOT NULL DEFAULT now(),
   finished_at         timestamptz
 );
+-- Nâng cấp bảng đã tồn tại từ trước khi có auto_restart (idempotent, không mất dữ liệu) —
+-- PHẢI chạy trước mọi CREATE INDEX bên dưới tham chiếu cột này, vì CREATE TABLE IF NOT EXISTS
+-- ở trên là no-op khi bảng đã tồn tại (không tự thêm cột mới).
+ALTER TABLE lol.crawl_jobs ADD COLUMN IF NOT EXISTS auto_restart boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS crawl_jobs_platform_idx ON lol.crawl_jobs (platform, id DESC);
+CREATE INDEX IF NOT EXISTS crawl_jobs_auto_restart_idx ON lol.crawl_jobs (auto_restart, status);
 `;
 
 /** Tạo schema `lol` + bảng nếu chưa có. Chạy một lần mỗi tiến trình; lỗi thì cho phép thử lại. */

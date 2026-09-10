@@ -1,4 +1,8 @@
-export type CrawlJobStatus = "running" | "paused" | "done" | "error";
+/**
+ * running: đang chạy · paused: dừng ngoài ý muốn (server restart, hết key) — watchdog tự tiếp tục
+ * job 24/7 · stopped: người dùng bấm Tạm dừng — KHÔNG tự tiếp tục · done: hết việc · error: lỗi.
+ */
+export type CrawlJobStatus = "running" | "paused" | "stopped" | "done" | "error";
 
 export interface CrawlJob {
   id: number;
@@ -8,8 +12,12 @@ export interface CrawlJob {
   status: CrawlJobStatus;
   queueIds: number[];
   matchesPerPlayer: number;
+  /** <= 0 = không giới hạn. */
   maxPlayers: number;
+  /** <= 0 = không giới hạn. */
   maxDepth: number;
+  /** Chế độ 24/7: không dừng, tự làm mới người cũ khi hết người mới, tự resume sau khi bị dừng. */
+  autoRestart: boolean;
   playersCrawled: number;
   playersRanked: number;
   matchesAdded: number;
@@ -30,6 +38,7 @@ export interface CrawlOptions {
   matchesPerPlayer: number;
   maxPlayers: number;
   maxDepth: number;
+  autoRestart: boolean;
 }
 
 /** Tổng quan dữ liệu đã thu thập của một platform. */

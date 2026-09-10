@@ -3,19 +3,16 @@ import { isKnownRegion } from "@/lib/region";
 import { RiotApiError } from "@/lib/riot";
 import { snapshotKeys } from "@/lib/riot-limiter";
 import { allRiotKeys, getConfig } from "@/lib/store";
-import {
-  CrawlError,
-  getLatestJob,
-  isRunnerActive,
-  pauseJob,
-  resumeJob,
-  startJob,
-} from "@/lib/stats/crawler";
+import { CrawlError, ensureWatchdog, getLatestJob, pauseJob, resumeJob, startJob } from "@/lib/stats/crawler";
 import { isDbConfigured } from "@/lib/stats/db";
 import { getSummary } from "@/lib/stats/queries";
 import type { CrawlStatusResponse } from "@/lib/stats/types";
 
 export const dynamic = "force-dynamic";
+
+// Chốt an toàn bên cạnh instrumentation.ts: bật watchdog ngay khi module route này được nạp
+// (ví dụ lần poll GET đầu tiên từ trang /stats) — vô hại nếu đã bật (ensureWatchdog idempotent).
+if (isDbConfigured()) ensureWatchdog();
 
 const ALLOWED_QUEUES = [420, 440];
 
@@ -27,7 +24,8 @@ async function buildStatus(platform: string): Promise<CrawlStatusResponse> {
   }
   try {
     const [job, summary] = await Promise.all([getLatestJob(platform), getSummary(platform)]);
-    return { dbConfigured: true, job, runnerActive: isRunnerActive(job?.id), summary, keys };
+    // getLatestJob đã chuyển job "running" mất nhịp tim → paused, nên còn "running" là đang chạy thật
+    return { dbConfigured: true, job, runnerActive: job?.status === "running", summary, keys };
   } catch (e) {
     return {
       dbConfigured: true,
@@ -62,6 +60,8 @@ interface CrawlBody {
   matchesPerPlayer?: number;
   maxPlayers?: number;
   maxDepth?: number;
+  /** Chế độ 24/7: không dừng, ép maxPlayers/maxDepth = 0 (không giới hạn) bất kể 2 tham số trên. */
+  autoRestart?: boolean;
 }
 
 /** Điều khiển crawler: start (cần riotId + tuỳ chọn), pause, resume. Trả trạng thái mới. */
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
 
   try {
     if (body.action === "pause") {
-      await pauseJob();
+      await pauseJob(platform);
     } else if (body.action === "resume") {
       await resumeJob(platform);
     } else if (body.action === "start") {
@@ -86,13 +86,16 @@ export async function POST(req: Request) {
         ? body.queueIds.map(Number).filter((q) => ALLOWED_QUEUES.includes(q))
         : [420];
       if (queueIds.length === 0) return NextResponse.json({ error: "Chọn ít nhất một chế độ xếp hạng" }, { status: 400 });
+      const autoRestart = Boolean(body.autoRestart);
       const matchesPerPlayer = clampInt(body.matchesPerPlayer, 1, 100, 20);
-      const maxPlayers = clampInt(body.maxPlayers, 1, 100_000, 200);
-      const maxDepth = clampInt(body.maxDepth, 0, 20, 3);
+      // Chế độ 24/7 ép luôn 0 (không giới hạn) ở lib/stats/crawler.ts#startJob, giá trị ở đây
+      // chỉ dùng khi KHÔNG bật autoRestart nên vẫn giữ min 1 cho form thường.
+      const maxPlayers = clampInt(body.maxPlayers, 1, 1_000_000, 200);
+      const maxDepth = clampInt(body.maxDepth, 0, 50, 3);
       if (matchesPerPlayer === null || maxPlayers === null || maxDepth === null) {
         return NextResponse.json({ error: "Tham số không hợp lệ" }, { status: 400 });
       }
-      await startJob({ platform, riotId, queueIds, matchesPerPlayer, maxPlayers, maxDepth });
+      await startJob({ platform, riotId, queueIds, matchesPerPlayer, maxPlayers, maxDepth, autoRestart });
     } else {
       return NextResponse.json({ error: "action phải là start | pause | resume" }, { status: 400 });
     }

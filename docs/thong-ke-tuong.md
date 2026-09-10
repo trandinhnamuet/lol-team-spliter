@@ -53,8 +53,30 @@ chia team). Vòng lặp:
 6. Đánh dấu người đó `crawled`; dừng khi đủ **Tối đa người** hoặc hết frontier.
 
 Tham số mặc định: 20 trận/người, 200 người, độ sâu 3. Có thể **Tạm dừng** (người đang dở vẫn
-`pending`, lần tiếp tục làm lại) và **Tiếp tục**; server khởi động lại thì job đang chạy tự
-chuyển `paused` với ghi chú, bấm Tiếp tục để chạy tiếp.
+`pending`, lần tiếp tục làm lại) và **Tiếp tục**.
+
+### Chế độ liên tục 24/7 (`autoRestart`, mặc định bật trên form)
+
+- **Không giới hạn**: `max_players = 0`, `max_depth = 0` (server ép về 0 bất kể form gửi gì).
+- **Không bao giờ "done"**: khi hết người `pending` mới, crawler lấy người đã crawl **lâu nhất**
+  (`crawled_at` cũ nhất) đưa lại hàng đợi để tải trận *mới* của họ → cả mạng lưới được làm mới
+  xoay vòng; tốc độ hoàn toàn do rate limit của (các) key quyết định, không bao giờ vượt.
+- **Nhịp tim**: vòng lặp ghi `updated_at = now()` mỗi 30 s (kể cả khi đang chờ rate limit). Job
+  `running` mà quá **120 s** không có nhịp tim = tiến trình đã chết (server restart/crash) → coi
+  là `paused`. Trạng thái sống/chết dựa trên DB, không dựa biến trong bộ nhớ, nên nhiều tiến trình
+  dùng chung DB (dev + production) không dẫm lên nhau: tiến trình khác thấy nhịp tim mới sẽ không
+  khởi động job thứ hai; bấm Tạm dừng từ tiến trình khác chỉ ghi `paused` vào DB và vòng lặp tự
+  thoát sau người đang xử lý.
+- **Watchdog** (`ensureWatchdog`, bật từ `instrumentation.ts` lúc server khởi động và khi route
+  `/api/stats/crawl` được nạp): mỗi 60 s, nếu không có job nào sống, tự **Tiếp tục** job 24/7 đang
+  `paused`/`error`/`running`-mất-nhịp-tim. Nhờ đó job tự hồi sau `pm2 restart`/deploy (~2–3 phút),
+  sau lỗi liên tiếp thoáng qua, và ngay sau khi được thêm key mới lúc mọi key cũ đã hết hạn.
+- **Giới hạn thật sự duy nhất là key**: dev key của Riot hết hạn sau 24 giờ. Khi đó job dừng với
+  ghi chú "Không còn Riot API key hợp lệ"; dán key mới ở thanh trên cùng hoặc mục Riot API keys,
+  watchdog sẽ tự chạy tiếp trong ≤ 1 phút. Muốn chạy thật sự không cần đụng tay, cần key
+  Personal/Production (không hết hạn) đăng ký ở developer.riotgames.com.
+- Tắt chế độ này (bỏ tick) thì job hoạt động như cũ: dừng khi đủ người/hết frontier, server restart
+  thì chờ bấm Tiếp tục.
 
 ### Chi phí request
 
