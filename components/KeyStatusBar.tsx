@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import RegionSelect from "@/components/hex/RegionSelect";
+import SoundToggle from "@/components/hex/SoundToggle";
 import type { KeyStatus } from "@/lib/types";
 
 interface KeyInfo {
@@ -147,13 +148,16 @@ export default function KeyStatusBar() {
         )}
         <RegionSelect />
         {notice && <span className="text-xs text-magic-300">{notice}</span>}
-        <button
-          onClick={() => setShowInput((v) => !v)}
-          className="hex-btn hex-btn-ghost ml-auto"
-          title="Key chính hết hạn thì key mới thay nó; còn hạn thì key mới được thêm làm key phụ. Dán nhiều key cách nhau bằng dấu phẩy hoặc xuống dòng."
-        >
-          {showInput ? "Ẩn" : "Thêm key"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <SoundToggle />
+          <button
+            onClick={() => setShowInput((v) => !v)}
+            className="hex-btn hex-btn-ghost"
+            title="Key chính hết hạn thì key mới thay nó; còn hạn thì key mới được thêm làm key phụ. Dán nhiều key cách nhau bằng dấu phẩy hoặc xuống dòng."
+          >
+            {showInput ? "Ẩn" : "Thêm key"}
+          </button>
+        </div>
         {showInput && (
           <div className="hex-reveal flex w-full items-center gap-2 pt-1">
             <input

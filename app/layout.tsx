@@ -5,6 +5,7 @@ import KeyStatusBar from "@/components/KeyStatusBar";
 import HexLogo from "@/components/hex/HexLogo";
 import MagicDust from "@/components/hex/MagicDust";
 import NavLinks from "@/components/hex/NavLinks";
+import UiSounds from "@/components/hex/UiSounds";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi" className={`${cinzel.variable} ${cormorant.variable} ${inter.variable}`}>
       <body className="min-h-screen antialiased">
+        <UiSounds />
         <div className="hex-gridlines" aria-hidden="true" />
         <MagicDust />
         <div className="hex-vignette" aria-hidden="true" />

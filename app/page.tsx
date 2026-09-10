@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import MatchFoundModal from "@/components/hex/MatchFoundModal";
 import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
@@ -31,6 +32,8 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
   const [result, setResult] = useState<TeamResult | null>(null);
+  const [showFound, setShowFound] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Tab 2: tạo sự kiện
   const [eventName, setEventName] = useState("");
@@ -45,6 +48,7 @@ export default function HomePage() {
     setError("");
     setResult(null);
     setFailed([]);
+    setShowFound(false);
     try {
       const riotIds = rawList.split("\n").map(normalizeLine).filter(Boolean);
       const data = await splitWithProgress(
@@ -63,6 +67,7 @@ export default function HomePage() {
       }
       setResult(data.result ?? null);
       setFailed(data.failed ?? []);
+      if (data.result) setShowFound(true);
     } catch {
       setError("Lỗi kết nối server");
     } finally {
@@ -192,8 +197,20 @@ export default function HomePage() {
               </ul>
             </div>
           )}
-          {result && <TeamResults result={result} failed={failed} />}
+          {result && (
+            <div ref={resultsRef} className="scroll-mt-28">
+              <TeamResults result={result} failed={failed} />
+            </div>
+          )}
         </div>
+      )}
+
+      {showFound && result && (
+        <MatchFoundModal
+          subtitle={`${result.teams.length} đội · chênh lệch elo ${result.spread}`}
+          onView={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onClose={() => setShowFound(false)}
+        />
       )}
 
       {tab === "event" && (

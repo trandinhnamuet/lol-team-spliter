@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import HexCorners from "@/components/hex/HexCorners";
+import MatchFoundModal from "@/components/hex/MatchFoundModal";
 import SplitProgressBar from "@/components/hex/SplitProgress";
 import TeamSizeInput, { parseTeamSize } from "@/components/hex/TeamSizeInput";
 import TeamResults from "@/components/TeamResults";
@@ -23,6 +24,8 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
   const [error, setError] = useState("");
   const [failed, setFailed] = useState<ResolvedPlayer[]>([]);
   const [result, setResult] = useState<TeamResult | null>(null);
+  const [showFound, setShowFound] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [registerUrl, setRegisterUrl] = useState("");
 
   const refresh = useCallback(async () => {
@@ -84,6 +87,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
     setError("");
     setResult(null);
     setFailed([]);
+    setShowFound(false);
     try {
       const data = await splitWithProgress(
         { eventId: id, teamSize: parseTeamSize(teamSize) ?? 5, platform: getStoredRegion() },
@@ -96,6 +100,7 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
       }
       setResult(data.result ?? null);
       setFailed(data.failed ?? []);
+      if (data.result) setShowFound(true);
     } catch {
       setError("Lỗi kết nối server");
     } finally {
@@ -232,7 +237,19 @@ export default function EventPage({ params }: { params: Promise<{ id: string }> 
           </ul>
         </div>
       )}
-      {result && <TeamResults result={result} failed={failed} />}
+      {result && (
+        <div ref={resultsRef} className="scroll-mt-28">
+          <TeamResults result={result} failed={failed} />
+        </div>
+      )}
+
+      {showFound && result && (
+        <MatchFoundModal
+          subtitle={`${result.teams.length} đội · chênh lệch elo ${result.spread}`}
+          onView={() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onClose={() => setShowFound(false)}
+        />
+      )}
     </div>
   );
 }
