@@ -8,6 +8,7 @@ import {
   type MatchDetail,
 } from "@/lib/riot";
 import { getLimiter, KeyPool } from "@/lib/riot-limiter";
+import { CRAWLER_MIN_HEADROOM, isForegroundBusy } from "@/lib/riot-priority";
 import { allRiotKeys, getConfig } from "@/lib/store";
 import { query, withTransaction } from "./db";
 import type { CrawlJob, CrawlJobStatus, CrawlOptions } from "./types";
@@ -501,7 +502,7 @@ async function runLoop(r: Runner) {
           log("không còn key định danh (identity) → paused");
           return;
         }
-        await crawlPlayer(job, next, pool, r, log);
+        await crawlPlayer(job, next, pool, r, log, cfg.riotApiKey);
         consecutiveErrors = 0;
       } catch (e) {
         if (e instanceof RiotApiError) {
@@ -564,6 +565,44 @@ function pickKeyOrThrow(pool: KeyPool, method: string, needIdentity: boolean): s
 }
 
 /**
+ * Nhường Riot API cho việc tiền cảnh (chia team / xác thực đăng ký) — gọi trước MỖI request của
+ * crawler. Chờ khi (a) đang có request tiền cảnh (+ đệm vài giây sau khi xong) hoặc (b) key chính
+ * còn dưới 25 % ngân sách rate limit — để lượt chia team bắt đầu là có sẵn lượt gọi ngay, không
+ * phải xếp hàng sau crawler. Trả về key nên dùng (chọn lại sau khi chờ vì ngân sách đã đổi).
+ */
+async function acquireKey(
+  pool: KeyPool,
+  method: string,
+  needIdentity: boolean,
+  primaryKey: string,
+  jobId: number,
+  r: Runner
+): Promise<string> {
+  let noted = false;
+  for (;;) {
+    if (r.stopRequested) return pickKeyOrThrow(pool, method, needIdentity);
+    const now = Date.now();
+    const busy = isForegroundBusy(now);
+    // Chừa ngân sách trên key chính (key mà chia team dùng); key phụ không cần chừa.
+    const lowHeadroom = getLimiter(primaryKey).headroom(now) < CRAWLER_MIN_HEADROOM;
+    const key = pickKeyOrThrow(pool, method, needIdentity);
+    const usesPrimary = key === primaryKey;
+    if (!busy && !(lowHeadroom && usesPrimary)) return key;
+    if (!noted) {
+      noted = true;
+      await bumpJob(
+        jobId,
+        {},
+        busy
+          ? "Đang nhường Riot API cho lượt chia team…"
+          : "Chờ key chính hồi ngân sách (giữ 25% cho việc chia team)…"
+      ).catch(() => undefined);
+    }
+    await sleep(busy ? 500 : 1000);
+  }
+}
+
+/**
  * Thăm dò phạm vi các key chưa biết (1 request league-v4 mỗi key, một lần cho cả đời tiến trình):
  * request theo PUUID thành công → key cùng tài khoản với kho (identity); Riot trả 400
  * "Exception decrypting" → key thuộc tài khoản khác, chỉ dùng tải chi tiết trận (matches-only).
@@ -587,7 +626,8 @@ async function crawlPlayer(
   p: FrontierPlayer,
   pool: KeyPool,
   r: Runner,
-  log: (msg: string) => void
+  log: (msg: string) => void,
+  primaryKey: string
 ) {
   const label = p.game_name ? `${p.game_name}#${p.tag_line ?? ""}` : p.puuid.slice(0, 12) + "…";
   const counters: Counters = {};
@@ -597,7 +637,7 @@ async function crawlPlayer(
   const rankStale = !p.rank_fetched_at || Date.now() - p.rank_fetched_at.getTime() > RANK_TTL_MS;
   if (rankStale) {
     await bumpJob(job.id, {}, `Tra rank ${label} (độ sâu ${p.depth})…`);
-    const key = pickKeyOrThrow(pool, METHOD_LEAGUE, true);
+    const key = await acquireKey(pool, METHOD_LEAGUE, true, primaryKey, job.id, r);
     counters.requests_made = (counters.requests_made ?? 0) + 1;
     let rankTier: string | null = null;
     try {
@@ -631,7 +671,7 @@ async function crawlPlayer(
   // 2. Danh sách match id (1 request)
   await bumpJob(job.id, counters, `Lấy lịch sử xếp hạng của ${label}…`);
   Object.keys(counters).forEach((k) => delete counters[k as keyof Counters]);
-  const idsKey = pickKeyOrThrow(pool, METHOD_IDS, true);
+  const idsKey = await acquireKey(pool, METHOD_IDS, true, primaryKey, job.id, r);
   counters.requests_made = 1;
   const ids = await getRankedMatchIds(idsKey, job.platform, p.puuid, {
     queueIds: job.queueIds,
@@ -654,7 +694,7 @@ async function crawlPlayer(
   let added = 0;
   for (let i = 0; i < newIds.length; i++) {
     if (r.stopRequested) break;
-    const key = pickKeyOrThrow(pool, METHOD_MATCH, false);
+    const key = await acquireKey(pool, METHOD_MATCH, false, primaryKey, job.id, r);
     const identityFetch = getLimiter(key).scope === "identity";
     const detail = await getMatchDetail(key, job.platform, newIds[i]);
     const c: Counters = { requests_made: 1 };

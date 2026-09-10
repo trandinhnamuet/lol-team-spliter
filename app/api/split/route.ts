@@ -13,6 +13,7 @@ import {
   RiotApiError,
 } from "@/lib/riot";
 import { estimateEloFromMatches } from "@/lib/mmr-estimate";
+import { beginForeground } from "@/lib/riot-priority";
 import { getConfig, getEvent } from "@/lib/store";
 import type { ResolvedPlayer } from "@/lib/types";
 
@@ -91,6 +92,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Tối đa 100 người chơi mỗi lần" }, { status: 400 });
   }
 
+  // Ưu tiên Riot API cho lượt chia team: crawler thống kê nền tạm ngừng gọi Riot cho tới khi xong
+  const endForeground = beginForeground();
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -112,6 +115,7 @@ export async function POST(req: Request) {
       );
       const finish = () => {
         clearInterval(heartbeat);
+        endForeground();
         if (closed) return;
         closed = true;
         try {

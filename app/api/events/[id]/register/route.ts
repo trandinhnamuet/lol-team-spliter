@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAccountByRiotId, parseRiotId, RiotApiError } from "@/lib/riot";
+import { beginForeground } from "@/lib/riot-priority";
 import { getConfig, getEvent, updateEvent } from "@/lib/store";
 import type { EventPlayer } from "@/lib/types";
 
@@ -33,6 +34,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ error: "Server chưa cấu hình Riot API key" }, { status: 503 });
   }
 
+  const endForeground = beginForeground(); // người dùng đang chờ → crawler nền nhường Riot API
   try {
     const account = await getAccountByRiotId(
       cfg.riotApiKey,
@@ -40,6 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       parsed.gameName,
       parsed.tagLine
     );
+    endForeground();
     if (!account) {
       return NextResponse.json({ error: "Không tìm thấy tài khoản này" }, { status: 400 });
     }
@@ -66,5 +69,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   } catch (e) {
     const msg = e instanceof RiotApiError ? e.message : "Lỗi khi gọi Riot API";
     return NextResponse.json({ error: msg }, { status: 502 });
+  } finally {
+    endForeground();
   }
 }

@@ -104,6 +104,13 @@ và `riotFetch` chờ limiter của key đó trước khi gửi:
   có chỗ trống và ngủ đúng bấy nhiêu.
 - Vẫn nhận 429 (hiếm) → chặn key theo `Retry-After`; 401/403 → loại key 10 phút rồi thử lại.
 
+**Ưu tiên chia team hơn crawler** (`lib/riot-priority.ts`): route chia team (`/api/split`), xác thực
+Riot ID (`/api/validate`) và đăng ký sự kiện đánh dấu "tiền cảnh" khi bắt đầu/kết thúc. Crawler
+kiểm tra trước **mỗi** request Riot: đang có tiền cảnh (hoặc vừa xong chưa quá 5 s) → ngủ, không
+gọi Riot; ngoài ra crawler chỉ dùng key chính khi key đó còn **≥ 25 %** ngân sách rate limit, để
+lượt chia team bắt đầu là có sẵn lượt gọi thay vì xếp hàng sau crawler. Key phụ (matches-only)
+không bị chừa. Ghi chú job hiện "Đang nhường Riot API cho lượt chia team…" trong lúc chờ.
+
 **Nhiều key:** thêm ở mục "Riot API keys" trong trang `/stats` (dán nhiều key, mỗi dòng một
 key; key được kiểm tra với Riot trước khi lưu vào `data/config.json` → `riotApiKeys`). Crawler
 dùng `KeyPool`: mỗi request chọn key có thời gian chờ ngắn nhất (hoà thì xoay vòng). Key chính

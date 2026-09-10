@@ -214,7 +214,8 @@ export default function CrawlPanel({
           <p className="text-xs leading-relaxed text-steel-100">
             Mỗi người chỉ tốn <span className="text-gold-200">2 request</span> (rank + danh sách trận) cộng số
             trận <em>mới</em>; trận đã có trong kho không tải lại. Bậc rank của trận suy từ rank những người
-            trong trận đã biết — không tra rank cả 10 người.
+            trong trận đã biết — không tra rank cả 10 người. Khi có lượt <em>chia team</em> đang chạy, crawler
+            tự tạm ngừng gọi Riot và luôn giữ 25% ngân sách key chính để chia team không bị chờ rate limit.
           </p>
         </div>
 

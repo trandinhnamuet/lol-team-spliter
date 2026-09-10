@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAccountByRiotId, parseRiotId, RiotApiError } from "@/lib/riot";
+import { beginForeground } from "@/lib/riot-priority";
 import { getConfig } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
       { status: 503 }
     );
   }
+  const endForeground = beginForeground(); // người dùng đang chờ → crawler nền nhường Riot API
   try {
     const account = await getAccountByRiotId(
       cfg.riotApiKey,
@@ -40,5 +42,7 @@ export async function POST(req: Request) {
     const msg = e instanceof RiotApiError ? e.message : "Lỗi khi gọi Riot API";
     const status = e instanceof RiotApiError && (e.status === 401 || e.status === 403) ? 503 : 502;
     return NextResponse.json({ valid: false, error: msg }, { status });
+  } finally {
+    endForeground();
   }
 }

@@ -97,6 +97,17 @@ class WindowSet {
     return min === Infinity ? 0 : Math.max(0, min);
   }
 
+  /** Tỉ lệ ngân sách còn trống (0..1) của cửa sổ chật nhất. */
+  headroom(now: number): number {
+    this.prune(now);
+    let min = 1;
+    for (const w of this.windows) {
+      const cap = this.effectiveLimit(w);
+      min = Math.min(min, Math.max(0, cap - w.stamps.length) / cap);
+    }
+    return min;
+  }
+
   reserve(now: number) {
     for (const w of this.windows) w.stamps.push(now);
   }
@@ -171,6 +182,12 @@ export class KeyLimiter {
   available(now = Date.now()): number {
     if (now < this.blockedUntil || now < this.invalidUntil) return 0;
     return this.app.available(now);
+  }
+
+  /** Tỉ lệ ngân sách app còn trống (0..1) — crawler dùng để chừa chỗ cho việc tiền cảnh. */
+  headroom(now = Date.now()): number {
+    if (now < this.blockedUntil || now < this.invalidUntil) return 0;
+    return this.app.headroom(now);
   }
 
   /** Chờ tới khi gửi được rồi giữ chỗ (đồng bộ ngay sau khi hết chờ để tránh tranh chấp). */
