@@ -1,10 +1,9 @@
 /**
  * Âm thanh giao diện kiểu client LMHT.
  *
- * Mặc định mọi âm thanh được TỔNG HỢP bằng Web Audio API (không dùng file của Riot).
- * Nếu muốn dùng bộ âm thanh riêng, đặt file vào `public/sounds/` với tên:
- *   hover.mp3|ogg · click.mp3|ogg · accept.mp3|ogg · match-found.mp3|ogg
- * File nào có sẽ được ưu tiên tự động, không có thì dùng bản tổng hợp.
+ * Bộ âm mặc định nằm ở `public/sounds/{hover,click,accept,match-found}.mp3` — tổng hợp theo mô hình
+ * tham số từ số đo (attack, decay, phổ) của âm client LMHT, không chứa file của Riot. Thay file cùng tên
+ * (mp3 hoặc ogg) là đổi được bộ âm. Thiếu file thì rơi về bản tổng hợp Web Audio bên dưới.
  *
  * Tắt/bật tiếng lưu trong localStorage (`hex-sound-muted`).
  */
@@ -78,6 +77,11 @@ function getCtx(): AudioContext | null {
 export function warmAudio() {
   const c = getCtx();
   if (c && c.state === "suspended") void c.resume().catch(() => {});
+}
+
+/** Tải sẵn 4 file trong public/sounds để ngay lần phát đầu đã dùng file thật thay vì bản tổng hợp. */
+export function preloadSounds() {
+  (["hover", "click", "accept", "match-found"] as SoundName[]).forEach(loadFile);
 }
 
 function loadFile(name: SoundName) {

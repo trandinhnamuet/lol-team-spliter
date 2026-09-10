@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { playSound, warmAudio, type SoundName } from "@/lib/sounds";
+import { playSound, preloadSounds, warmAudio, type SoundName } from "@/lib/sounds";
 
 /**
  * Gắn âm thanh hover/click cho MỌI phần tử tương tác trong app bằng listener ở document,
@@ -32,6 +32,7 @@ export default function UiSounds() {
     // Thiết bị cảm ứng không có hover thật — bỏ tiếng hover để khỏi kêu 2 lần khi chạm
     const canHover = window.matchMedia?.("(hover: hover)").matches ?? true;
     let current: HTMLElement | null = null;
+    preloadSounds();
 
     const onOver = (e: PointerEvent) => {
       if (!canHover) return;

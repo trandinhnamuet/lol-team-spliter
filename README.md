@@ -8,8 +8,8 @@ Chia team đấu tập/giải nội bộ Liên Minh Huyền Thoại cân bằng 
 - Mỗi lượt chia có link riêng `/split/[id]`: việc tra rank chạy nền trên server nên **đóng tab
   vẫn xong**, kết quả tự lưu thành link chia sẻ `/result/[id]`. Cấu hình bảng elo trong trang Admin.
 - Trải nghiệm kiểu client LMHT: popup "Hoàn thành chia team" (như màn Đã tìm thấy trận) và âm thanh
-  hover/click cho mọi nút. Âm thanh được tổng hợp bằng Web Audio (không dùng file của Riot); muốn dùng
-  bộ âm riêng thì đặt `hover|click|accept|match-found.mp3|ogg` vào `public/sounds/` — có file là tự ưu tiên.
+  hover/click cho mọi nút. Bộ âm trong `public/sounds/` được tổng hợp theo số đo (attack, decay, phổ) của
+  âm client thật — không chứa file của Riot; thay file cùng tên `hover|click|accept|match-found.mp3|ogg` là đổi bộ âm.
   Nút loa ở thanh trạng thái để tắt/bật tiếng (lưu trong trình duyệt).
 
 - **Thống kê tướng theo rank** (`/stats`): crawl đệ quy lịch sử xếp hạng từ một ingame gốc vào
