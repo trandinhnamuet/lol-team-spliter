@@ -1,322 +1,425 @@
-[
- {
-  "name": "hover-1",
-  "group": "hover",
-  "desc": "Ting kim loại mảnh, rất cao, cực ngắn",
-  "file": "hover-1.mp3",
-  "dur": 0.18,
-  "source": "synth"
+{
+ "reference": {
+  "hover": {
+   "label": "sfx-uikit-button-generic-hover",
+   "profile": {
+    "dur": 0.93,
+    "attack_ms": 94.8,
+    "t20": 0.344,
+    "t40": 0.678,
+    "centroid_head": 8415,
+    "centroid_tail": 6700
+   }
+  },
+  "click": {
+   "label": "sfx-uikit-button-generic-click",
+   "profile": {
+    "dur": 0.67,
+    "attack_ms": 20.0,
+    "t20": 0.065,
+    "t40": 0.205,
+    "centroid_head": 7647,
+    "centroid_tail": 9116
+   }
+  },
+  "accept": {
+   "label": "sfx-uikit-button-gold-click",
+   "profile": {
+    "dur": 2.85,
+    "attack_ms": 169.6,
+    "t20": 0.14,
+    "t40": 0.773,
+    "centroid_head": 6687,
+    "centroid_tail": 5851
+   }
+  },
+  "match-found": {
+   "label": "sfx-readycheck-sr-portal",
+   "profile": {
+    "dur": 12.53,
+    "attack_ms": 234.5,
+    "t20": 1.327,
+    "t40": 11.768,
+    "centroid_head": 6419,
+    "centroid_tail": 5300
+   }
+  }
  },
- {
-  "name": "hover-2",
-  "group": "hover",
-  "desc": "Pha lê sáng, mềm hơn, hơi vang",
-  "file": "hover-2.mp3",
-  "dur": 0.26,
-  "source": "synth"
- },
- {
-  "name": "hover-3",
-  "group": "hover",
-  "desc": "Hai nốt lướt nhanh lên (lanh-canh), cao",
-  "file": "hover-3.mp3",
-  "dur": 0.22,
-  "source": "synth"
- },
- {
-  "name": "hover-4",
-  "group": "hover",
-  "desc": "Whisper kim loại (noise cộng hưởng) + ting mờ",
-  "file": "hover-4.mp3",
-  "dur": 0.14,
-  "source": "synth"
- },
- {
-  "name": "cc0-hover-1-glass_005",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · glass_005.ogg (centroid 2834Hz)",
-  "file": "cc0-hover-1-glass_005.mp3",
-  "dur": 0.13,
-  "source": "cc0"
- },
- {
-  "name": "cc0-hover-2-toggle_002",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · toggle_002.ogg (centroid 5173Hz)",
-  "file": "cc0-hover-2-toggle_002.mp3",
-  "dur": 0.14,
-  "source": "cc0"
- },
- {
-  "name": "cc0-hover-3-select_008",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · select_008.ogg (centroid 11399Hz)",
-  "file": "cc0-hover-3-select_008.mp3",
-  "dur": 0.06,
-  "source": "cc0"
- },
- {
-  "name": "cc0-hover-4-drop_001",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · drop_001.ogg (centroid 4316Hz)",
-  "file": "cc0-hover-4-drop_001.mp3",
-  "dur": 0.13,
-  "source": "cc0"
- },
- {
-  "name": "cc0-hover-5-scratch_002",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · scratch_002.ogg (centroid 7869Hz)",
-  "file": "cc0-hover-5-scratch_002.mp3",
-  "dur": 0.14,
-  "source": "cc0"
- },
- {
-  "name": "cc0-hover-6-select_007",
-  "group": "hover",
-  "desc": "CC0 · kenney_interface · select_007.ogg (centroid 8939Hz)",
-  "file": "cc0-hover-6-select_007.mp3",
-  "dur": 0.06,
-  "source": "cc0"
- },
- {
-  "name": "click-1",
-  "group": "click",
-  "desc": "Xeng kim loại sáng, vang 0.3s",
-  "file": "click-1.mp3",
-  "dur": 0.35,
-  "source": "synth"
- },
- {
-  "name": "click-2",
-  "group": "click",
-  "desc": "Xeng pha lê, cao hơn, gọn",
-  "file": "click-2.mp3",
-  "dur": 0.3,
-  "source": "synth"
- },
- {
-  "name": "click-3",
-  "group": "click",
-  "desc": "Hai lớp: ting cao + nền chuông trung, đầy hơn",
-  "file": "click-3.mp3",
-  "dur": 0.4,
-  "source": "synth"
- },
- {
-  "name": "click-4",
-  "group": "click",
-  "desc": "Chạm kim loại khô, sáng, rất ngắn (không vang)",
-  "file": "click-4.mp3",
-  "dur": 0.16,
-  "source": "synth"
- },
- {
-  "name": "click-5",
-  "group": "click",
-  "desc": "Xeng đôi lên cao (như xác nhận trong client)",
-  "file": "click-5.mp3",
-  "dur": 0.43,
-  "source": "synth"
- },
- {
-  "name": "cc0-click-10-confirmation_002",
-  "group": "click",
-  "desc": "CC0 · kenney_interface · confirmation_002.ogg (centroid 3259Hz)",
-  "file": "cc0-click-10-confirmation_002.mp3",
-  "dur": 0.54,
-  "source": "cc0"
- },
- {
-  "name": "cc0-click-11-key_open_01",
-  "group": "click",
-  "desc": "CC0 · oga100 · key_open_01.ogg (centroid 5994Hz)",
-  "file": "cc0-click-11-key_open_01.mp3",
-  "dur": 0.43,
-  "source": "cc0"
- },
- {
-  "name": "cc0-click-12-key_open_02",
-  "group": "click",
-  "desc": "CC0 · oga100 · key_open_02.ogg (centroid 5090Hz)",
-  "file": "cc0-click-12-key_open_02.mp3",
-  "dur": 0.34,
-  "source": "cc0"
- },
- {
-  "name": "cc0-click-7-bell_02",
-  "group": "click",
-  "desc": "CC0 · oga100 · bell_02.ogg (centroid 5517Hz)",
-  "file": "cc0-click-7-bell_02.mp3",
-  "dur": 0.53,
-  "source": "cc0"
- },
- {
-  "name": "cc0-click-8-confirmation_003",
-  "group": "click",
-  "desc": "CC0 · kenney_interface · confirmation_003.ogg (centroid 4193Hz)",
-  "file": "cc0-click-8-confirmation_003.mp3",
-  "dur": 0.32,
-  "source": "cc0"
- },
- {
-  "name": "cc0-click-9-door_open",
-  "group": "click",
-  "desc": "CC0 · oga100 · door_open.ogg (centroid 5519Hz)",
-  "file": "cc0-click-9-door_open.mp3",
-  "dur": 0.45,
-  "source": "cc0"
- },
- {
-  "name": "accept-1",
-  "group": "accept",
-  "desc": "Chuông kim loại lớn, sáng, vang 0.9s",
-  "file": "accept-1.mp3",
-  "dur": 0.9,
-  "source": "synth"
- },
- {
-  "name": "accept-2",
-  "group": "accept",
-  "desc": "Hợp âm pha lê 2 nốt (E–B) lấp lánh",
-  "file": "accept-2.mp3",
-  "dur": 0.9,
-  "source": "synth"
- },
- {
-  "name": "accept-3",
-  "group": "accept",
-  "desc": "Xeng mạnh + đuôi shimmer dài (kiểu khoá chọn tướng)",
-  "file": "accept-3.mp3",
-  "dur": 1.1,
-  "source": "synth"
- },
- {
-  "name": "cc0-accept-13-glass_004",
-  "group": "accept",
-  "desc": "CC0 · kenney_interface · glass_004.ogg (centroid 7315Hz)",
-  "file": "cc0-accept-13-glass_004.mp3",
-  "dur": 0.69,
-  "source": "cc0"
- },
- {
-  "name": "cc0-accept-14-bell_02",
-  "group": "accept",
-  "desc": "CC0 · oga100 · bell_02.ogg (centroid 5517Hz)",
-  "file": "cc0-accept-14-bell_02.mp3",
-  "dur": 0.53,
-  "source": "cc0"
- },
- {
-  "name": "cc0-accept-15-glass_04",
-  "group": "accept",
-  "desc": "CC0 · oga100 · glass_04.ogg (centroid 5936Hz)",
-  "file": "cc0-accept-15-glass_04.mp3",
-  "dur": 0.96,
-  "source": "cc0"
- },
- {
-  "name": "cc0-accept-16-glass_05",
-  "group": "accept",
-  "desc": "CC0 · oga100 · glass_05.ogg (centroid 6188Hz)",
-  "file": "cc0-accept-16-glass_05.mp3",
-  "dur": 1.03,
-  "source": "cc0"
- },
- {
-  "name": "cc0-accept-17-bell_01",
-  "group": "accept",
-  "desc": "CC0 · oga100 · bell_01.ogg (centroid 4874Hz)",
-  "file": "cc0-accept-17-bell_01.mp3",
-  "dur": 1.3,
-  "source": "cc0"
- },
- {
-  "name": "cc0-accept-18-confirmation_002",
-  "group": "accept",
-  "desc": "CC0 · kenney_interface · confirmation_002.ogg (centroid 3259Hz)",
-  "file": "cc0-accept-18-confirmation_002.mp3",
-  "dur": 0.54,
-  "source": "cc0"
- },
- {
-  "name": "match-found-1",
-  "group": "match-found",
-  "desc": "Chùm 4 chuông dâng lên (E5 G#5 B5 E6), vang dài ~2s",
-  "file": "match-found-1.mp3",
-  "dur": 2.08,
-  "source": "synth"
- },
- {
-  "name": "match-found-2",
-  "group": "match-found",
-  "desc": "Chùm pha lê 5 nốt nhanh hơn, cao và lấp lánh",
-  "file": "match-found-2.mp3",
-  "dur": 1.84,
-  "source": "synth"
- },
- {
-  "name": "match-found-3",
-  "group": "match-found",
-  "desc": "Xeng lớn mở màn + chùm 3 nốt cao, có đáy trung nhẹ (trang trọng)",
-  "file": "match-found-3.mp3",
-  "dur": 1.93,
-  "source": "synth"
- },
- {
-  "name": "match-found-4",
-  "group": "match-found",
-  "desc": "Hai nhịp 'xeng-XENG' rồi hợp âm sáng giữ lâu",
-  "file": "match-found-4.mp3",
-  "dur": 2.28,
-  "source": "synth"
- },
- {
-  "name": "cc0-match-found-19-bell_03",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · bell_03.ogg (centroid 7303Hz)",
-  "file": "cc0-match-found-19-bell_03.mp3",
-  "dur": 1.78,
-  "source": "cc0"
- },
- {
-  "name": "cc0-match-found-20-glass_05",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · glass_05.ogg (centroid 6188Hz)",
-  "file": "cc0-match-found-20-glass_05.mp3",
-  "dur": 1.03,
-  "source": "cc0"
- },
- {
-  "name": "cc0-match-found-21-bell_01",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · bell_01.ogg (centroid 4874Hz)",
-  "file": "cc0-match-found-21-bell_01.mp3",
-  "dur": 1.3,
-  "source": "cc0"
- },
- {
-  "name": "cc0-match-found-22-gong_01",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · gong_01.ogg (centroid 2901Hz)",
-  "file": "cc0-match-found-22-gong_01.mp3",
-  "dur": 1.42,
-  "source": "cc0"
- },
- {
-  "name": "cc0-match-found-23-metal_12",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · metal_12.ogg (centroid 3294Hz)",
-  "file": "cc0-match-found-23-metal_12.mp3",
-  "dur": 1.23,
-  "source": "cc0"
- },
- {
-  "name": "cc0-match-found-24-spring_02",
-  "group": "match-found",
-  "desc": "CC0 · oga100 · spring_02.ogg (centroid 2784Hz)",
-  "file": "cc0-match-found-24-spring_02.mp3",
-  "dur": 1.31,
-  "source": "cc0"
- }
-]
+ "items": [
+  {
+   "name": "hover-1",
+   "group": "hover",
+   "desc": "Dâng mềm ~90 ms (như generic-hover): 5.5 kHz + lấp lánh 16 kHz, -20 dB ≈ 0.3 s, tắt ~0.7 s",
+   "file": "hover-1.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 1.02,
+    "attack_ms": 64.9,
+    "t20": 0.379,
+    "t40": 0.788,
+    "centroid_head": 7601,
+    "centroid_tail": 5308
+   }
+  },
+  {
+   "name": "hover-2",
+   "group": "hover",
+   "desc": "Dâng ~60 ms, gọn hơn (tắt ~0.5 s), cùng dải kim loại 4–6 kHz",
+   "file": "hover-2.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 0.8,
+    "attack_ms": 49.9,
+    "t20": 0.244,
+    "t40": 0.544,
+    "centroid_head": 7216,
+    "centroid_tail": 5330
+   }
+  },
+  {
+   "name": "hover-3",
+   "group": "hover",
+   "desc": "Tick 13 kHz rất ngắn (như circlegold-hover), dư âm 4–5.5 kHz mảnh, tắt ~0.15 s",
+   "file": "hover-3.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 0.31,
+    "attack_ms": 15.0,
+    "t20": 0.07,
+    "t40": 0.14,
+    "centroid_head": 8952,
+    "centroid_tail": 6133
+   }
+  },
+  {
+   "name": "hover-4",
+   "group": "hover",
+   "desc": "Dâng ~80 ms + cặp partial lệch nhẹ (beating) — shimmer rõ hơn, vang ~0.8 s",
+   "file": "hover-4.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 1.05,
+    "attack_ms": 44.9,
+    "t20": 0.389,
+    "t40": 0.758,
+    "centroid_head": 6072,
+    "centroid_tail": 4551
+   }
+  },
+  {
+   "name": "cc0-hover-minimize_004",
+   "group": "hover",
+   "desc": "CC0 · kenney_interface · minimize_004",
+   "file": "cc0-hover-minimize_004.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.41,
+    "attack_ms": 39.9,
+    "t20": 0.035,
+    "t40": 0.354,
+    "centroid_head": 11065,
+    "centroid_tail": 4294
+   }
+  },
+  {
+   "name": "cc0-hover-noise_01",
+   "group": "hover",
+   "desc": "CC0 · oga100 · noise_01",
+   "file": "cc0-hover-noise_01.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.4,
+    "attack_ms": 49.9,
+    "t20": 0.05,
+    "t40": 0.244,
+    "centroid_head": 7410,
+    "centroid_tail": 6723
+   }
+  },
+  {
+   "name": "cc0-hover-spring_08",
+   "group": "hover",
+   "desc": "CC0 · oga100 · spring_08",
+   "file": "cc0-hover-spring_08.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.69,
+    "attack_ms": 34.9,
+    "t20": 0.15,
+    "t40": 0.414,
+    "centroid_head": 8188,
+    "centroid_tail": 5934
+   }
+  },
+  {
+   "name": "click-1",
+   "group": "click",
+   "desc": "Như generic-click: đánh 7.6k/12.8k/13.1k, rơi nhanh, dư âm 3.4k/7.6k/8k + thân 165 Hz nhẹ, vang tới ~0.7 s",
+   "file": "click-1.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 0.82,
+    "attack_ms": 5.0,
+    "t20": 0.175,
+    "t40": 0.439,
+    "centroid_head": 9658,
+    "centroid_tail": 5316
+   }
+  },
+  {
+   "name": "click-2",
+   "group": "click",
+   "desc": "Như button-big-click: attack ~35 ms, thân 160 Hz rõ hơn, dư âm 3.1k/7.1k/11k tới ~1.2 s",
+   "file": "click-2.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 1.25,
+    "attack_ms": 15.0,
+    "t20": 0.14,
+    "t40": 0.788,
+    "centroid_head": 8529,
+    "centroid_tail": 4386
+   }
+  },
+  {
+   "name": "click-3",
+   "group": "click",
+   "desc": "Như text-click: rất sáng (~10 kHz), rơi -40 dB@0.13 s rồi vang rất nhỏ tới ~1.1 s",
+   "file": "click-3.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 1.15,
+    "attack_ms": 5.0,
+    "t20": 0.04,
+    "t40": 0.673,
+    "centroid_head": 10045,
+    "centroid_tail": 5271
+   }
+  },
+  {
+   "name": "click-4",
+   "group": "click",
+   "desc": "Như click-generic-small: 13.1 kHz chủ đạo, gọn ~0.4 s, dư âm 3–7 kHz rất ngắn",
+   "file": "click-4.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 0.51,
+    "attack_ms": 5.0,
+    "t20": 0.05,
+    "t40": 0.269,
+    "centroid_head": 11721,
+    "centroid_tail": 8618
+   }
+  },
+  {
+   "name": "click-5",
+   "group": "click",
+   "desc": "Như generic-click-big: attack 0, transient 6–13 kHz dày, dư âm 6 kHz + thân 258 Hz, ~0.55 s",
+   "file": "click-5.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 0.6,
+    "attack_ms": 0.0,
+    "t20": 0.05,
+    "t40": 0.304,
+    "centroid_head": 10314,
+    "centroid_tail": 5815
+   }
+  },
+  {
+   "name": "cc0-click-bell_02",
+   "group": "click",
+   "desc": "CC0 · oga100 · bell_02",
+   "file": "cc0-click-bell_02.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.51,
+    "attack_ms": 0.0,
+    "t20": 0.1,
+    "t40": 0.354,
+    "centroid_head": 6782,
+    "centroid_tail": 3784
+   }
+  },
+  {
+   "name": "cc0-click-glass_05",
+   "group": "click",
+   "desc": "CC0 · oga100 · glass_05",
+   "file": "cc0-click-glass_05.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.89,
+    "attack_ms": 5.0,
+    "t20": 0.1,
+    "t40": 0.254,
+    "centroid_head": 6305,
+    "centroid_tail": 6199
+   }
+  },
+  {
+   "name": "cc0-click-other_01",
+   "group": "click",
+   "desc": "CC0 · oga100 · other_01",
+   "file": "cc0-click-other_01.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 0.79,
+    "attack_ms": 0.0,
+    "t20": 0.055,
+    "t40": 0.2,
+    "centroid_head": 5281,
+    "centroid_tail": 4767
+   }
+  },
+  {
+   "name": "accept-1",
+   "group": "accept",
+   "desc": "Như gold-click: đánh sáng nhiều noise, ring 2.7–3.2 kHz, thân 233/322/467/495 Hz, reverb ~1.8 s (tổng ~2.8 s)",
+   "file": "accept-1.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 2.19,
+    "attack_ms": 154.6,
+    "t20": 0.379,
+    "t40": 1.192,
+    "centroid_head": 7739,
+    "centroid_tail": 4908
+   }
+  },
+  {
+   "name": "accept-2",
+   "group": "accept",
+   "desc": "Như gameinvite-accept: thân 182–388 Hz, lấp lánh 4k/7.2k/9.2k/10k/12k giữ lâu trong đuôi, reverb ~2 s",
+   "file": "accept-2.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 2.79,
+    "attack_ms": 49.9,
+    "t20": 0.594,
+    "t40": 1.646,
+    "centroid_head": 8357,
+    "centroid_tail": 5435
+   }
+  },
+  {
+   "name": "accept-3",
+   "group": "accept",
+   "desc": "Như gameselect-confirm: đánh 11.3k + 5k, ring 3.1 kHz, thân 167/225/367/500 Hz, reverb ~1.5 s",
+   "file": "accept-3.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 2.14,
+    "attack_ms": 134.7,
+    "t20": 0.469,
+    "t40": 1.332,
+    "centroid_head": 7925,
+    "centroid_tail": 3968
+   }
+  },
+  {
+   "name": "accept-4",
+   "group": "accept",
+   "desc": "Bản gọn: cùng chất nhưng reverb ~1 s, tổng ~1.8 s (nếu ~3 s là quá dài cho web)",
+   "file": "accept-4.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 1.49,
+    "attack_ms": 84.8,
+    "t20": 0.394,
+    "t40": 0.853,
+    "centroid_head": 7568,
+    "centroid_tail": 4773
+   }
+  },
+  {
+   "name": "cc0-accept-bell_01",
+   "group": "accept",
+   "desc": "CC0 · oga100 · bell_01",
+   "file": "cc0-accept-bell_01.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 1.3,
+    "attack_ms": 39.9,
+    "t20": 0.299,
+    "t40": 0.958,
+    "centroid_head": 7046,
+    "centroid_tail": 4229
+   }
+  },
+  {
+   "name": "match-found-1",
+   "group": "match-found",
+   "desc": "Như sr-portal: gió hút 0→9 kHz ~0.9 s, va chạm ở 0.25 s, giữ lớn & sáng ~1.2 s, đuôi 208–652 Hz, reverb ~3 s",
+   "file": "match-found-1.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 4.49,
+    "attack_ms": 229.5,
+    "t20": 1.831,
+    "t40": 3.273,
+    "centroid_head": 6724,
+    "centroid_tail": 4025
+   }
+  },
+  {
+   "name": "match-found-2",
+   "group": "match-found",
+   "desc": "Va chạm mạnh ngay + 3 tiếng chuông kim loại dâng lên (1318/1568/1976 Hz) vang lâu, reverb ~2.5 s",
+   "file": "match-found-2.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 4.72,
+    "attack_ms": 444.0,
+    "t20": 1.502,
+    "t40": 2.789,
+    "centroid_head": 6302,
+    "centroid_tail": 3277
+   }
+  },
+  {
+   "name": "match-found-3",
+   "group": "match-found",
+   "desc": "Như jade-match-found (biến thể TRẦM, ít sáng): thân 233/367/567 Hz, pad giữ 195/265/358 Hz ~1.8 s, reverb ~3 s",
+   "file": "match-found-3.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 4.29,
+    "attack_ms": 404.1,
+    "t20": 1.771,
+    "t40": 2.699,
+    "centroid_head": 1129,
+    "centroid_tail": 1603
+   }
+  },
+  {
+   "name": "match-found-4",
+   "group": "match-found",
+   "desc": "Gió hút 0.5 s → va chạm kép (nhẹ 0.2 s, mạnh 0.5 s) → shimmer 3–8 kHz giữ ~1 s, reverb ~3 s",
+   "file": "match-found-4.mp3",
+   "source": "synth",
+   "profile": {
+    "dur": 4.67,
+    "attack_ms": 139.7,
+    "t20": 1.936,
+    "t40": 3.582,
+    "centroid_head": 7135,
+    "centroid_tail": 6442
+   }
+  },
+  {
+   "name": "cc0-match-found-bell_03",
+   "group": "match-found",
+   "desc": "CC0 · oga100 · bell_03",
+   "file": "cc0-match-found-bell_03.mp3",
+   "source": "cc0",
+   "profile": {
+    "dur": 1.72,
+    "attack_ms": 209.5,
+    "t20": 0.369,
+    "t40": 0.943,
+    "centroid_head": 8015,
+    "centroid_tail": 5642
+   }
+  }
+ ]
+}
