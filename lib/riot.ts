@@ -57,14 +57,32 @@ export class RiotApiError extends Error {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Hạn chót cho một request tới Riot. fetch của Node KHÔNG có timeout mặc định — thiếu cái này
+ *  thì một kết nối treo là treo luôn request của người dùng cho tới khi nginx cắt. */
+const RIOT_TIMEOUT_MS = 15_000;
+
+/** Response giả lập, dùng để trả lời ngay mà không gọi Riot.
+ *  Không đặt statusText: nó là ByteString (chỉ ASCII) nên chuỗi tiếng Việt sẽ ném TypeError. */
+function syntheticResponse(status: number): Response {
+  return new Response(null, { status });
+}
+
 /**
  * fetch có retry. `retries` là ngân sách retry lỗi mạng (ECONNRESET, DNS...);
  * 429 có ngân sách RIÊNG rộng hơn vì rate limit là chuyện bình thường với danh sách dài —
  * dev key chỉ cho 100 request / 2 phút nên phải kiên nhẫn chờ theo Retry-After,
  * tuyệt đối không để người chơi bị loại chỉ vì 429. Truyền retries = 0 để tắt mọi retry
  * (dùng cho check key nhanh).
+ *
+ * `maxWaitMs` giới hạn thời gian chịu chờ rate limit: quá ngưỡng thì trả 429 giả lập thay vì
+ * ngủ tiếp — dành cho đường đi người dùng đang ngồi đợi (kiểm tra key ở thanh trạng thái).
  */
-async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Response> {
+async function riotFetch(
+  url: string,
+  apiKey: string,
+  retries = 2,
+  maxWaitMs?: number
+): Promise<Response> {
   let netRetries = retries;
   let rateRetries = retries === 0 ? 0 : 6;
   // Chủ động chờ theo cửa sổ rate limit đã học của key này (xem riot-limiter.ts) —
@@ -73,11 +91,20 @@ async function riotFetch(url: string, apiKey: string, retries = 2): Promise<Resp
   const method = methodKeyOf(url);
   for (;;) {
     let res: Response;
+    // Key vừa bị Riot từ chối (401/403) → trả lời ngay thay vì chờ hết thời gian chặn.
+    if (!limiter.isUsable()) {
+      return syntheticResponse(401);
+    }
+    if (maxWaitMs !== undefined && limiter.waitMs(method) > maxWaitMs) {
+      // Key vẫn tốt, chỉ đang hết ngân sách — 429 để người gọi hiểu đúng là "bận", không phải "hỏng".
+      return syntheticResponse(429);
+    }
     await limiter.acquire(method);
     try {
       res = await fetch(url, {
         headers: { "X-Riot-Token": apiKey },
         cache: "no-store",
+        signal: AbortSignal.timeout(RIOT_TIMEOUT_MS),
       });
     } catch (e) {
       if (netRetries > 0) {
@@ -285,7 +312,8 @@ export async function checkKeyStatus(apiKey: string, platform: string): Promise<
   if (!apiKey) return "missing";
   try {
     const url = `https://${platform}.api.riotgames.com/lol/status/v4/platform-data`;
-    const res = await riotFetch(url, apiKey, 0);
+    // Thanh trạng thái gọi hàm này mỗi phút và ở mọi trang — không được phép chờ lâu.
+    const res = await riotFetch(url, apiKey, 0, 3000);
     if (res.ok) return "valid";
     // 429 = key ĐÃ xác thực được, chỉ đang bị giới hạn tốc độ (key sai luôn nhận 401/403).
     // Coi là hợp lệ, nếu không thì mỗi lần chia danh sách dài sẽ báo nhầm "key hỏng".

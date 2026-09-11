@@ -23,7 +23,9 @@ interface Window {
 const DEFAULT_APP_LIMIT = "20:1,100:120";
 /** Chừa lại vài % cho lệch đồng hồ / request đang bay. */
 const SAFETY = 0.95;
-/** Không dùng key trong 10 phút sau khi Riot trả 401/403 (key chết hoặc chưa kích hoạt). */
+/** Không dùng key trong 10 phút sau khi Riot trả 401/403 (key chết hoặc chưa kích hoạt).
+ *  Đây là cờ "bỏ qua key này", KHÔNG phải thời gian chờ: người gọi phải kiểm tra `isUsable()`
+ *  rồi bỏ key đi ngay, tuyệt đối không ngủ chờ hết 10 phút (xem waitMs bên dưới). */
 const AUTH_FAIL_BLOCK_MS = 10 * 60 * 1000;
 
 function parseSpec(spec: string): { limit: number; seconds: number }[] {
@@ -169,12 +171,18 @@ export class KeyLimiter {
     return now >= this.invalidUntil;
   }
 
+  /**
+   * Thời gian chờ vì RATE LIMIT (cửa sổ app/method + 429) — tối đa vài phút.
+   *
+   * Cố ý KHÔNG tính `invalidUntil`: key bị 401/403 thì phải bỏ qua ngay (`isUsable()`), chờ nó
+   * là treo request 10 phút. Đây từng là lỗi khiến `/api/key` treo tới mức nginx trả 504 và cả
+   * web như đứng hình mỗi khi key dev hết hạn.
+   */
   waitMs(method: string, now = Date.now()): number {
     return Math.max(
       this.app.waitMs(now),
       this.methodSet(method).waitMs(now),
       this.blockedUntil - now,
-      this.invalidUntil - now,
       0
     );
   }
