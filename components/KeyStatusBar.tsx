@@ -67,7 +67,18 @@ export default function KeyStatusBar() {
     setError("");
     setNotice("");
     try {
-      const primaryDead = !info || info.status === "invalid" || info.status === "missing";
+      // Trạng thái đang hiển thị có thể cũ tới 60 giây, mà key dev Riot thì CHẾT NGAY khi người
+      // dùng bấm tạo key mới trên portal. Hỏi lại ngay trước khi quyết định, nếu không key vừa dán
+      // sẽ bị thêm làm key phụ trong khi key chính đã chết — chia team vẫn hỏng vì nó chỉ dùng key chính.
+      let primaryDead = !info || info.status === "invalid" || info.status === "missing";
+      if (!primaryDead) {
+        try {
+          const fresh = (await (await fetch("/api/key", { cache: "no-store" })).json()) as KeyInfo;
+          primaryDead = fresh.status === "invalid" || fresh.status === "missing";
+        } catch {
+          /* không hỏi được thì giữ nhận định cũ */
+        }
+      }
       const parts = raw.split(/[\s,;]+/).filter(Boolean);
       const messages: string[] = [];
       let rest = parts;

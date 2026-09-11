@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkKeyStatus } from "@/lib/riot";
-import { getLimiter } from "@/lib/riot-limiter";
+import { checkKeyStatus, checkNewKeyStatus } from "@/lib/riot";
 import { getConfig, saveConfig } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -29,18 +28,8 @@ export async function POST(req: Request) {
   const cfg = await getConfig();
   const platform = body.platform?.trim().toLowerCase() || cfg.platform;
 
-  // Key vừa tạo trên portal Riot thường mất vài giây mới kích hoạt (trong lúc đó trả 403),
-  // nên thử lại vài nhịp trước khi kết luận là key hỏng. Mỗi nhịp phải xoá cờ chặn 401/403 của
-  // nhịp trước, nếu không lần thử thứ hai trở đi sẽ bị chính limiter trả lời "hỏng" mà không
-  // hề gọi Riot — người dùng dán key mới sẽ không bao giờ thêm được.
-  const limiter = getLimiter(apiKey);
-  limiter.reset();
-  let status = await checkKeyStatus(apiKey, platform);
-  for (let attempt = 0; attempt < 3 && status !== "valid"; attempt++) {
-    await new Promise((r) => setTimeout(r, 2000));
-    limiter.reset();
-    status = await checkKeyStatus(apiKey, platform);
-  }
+  // Key vừa tạo trên portal Riot thường mất vài giây mới kích hoạt (trong lúc đó trả 403).
+  const status = await checkNewKeyStatus(apiKey, platform);
 
   if (status !== "valid") {
     return NextResponse.json(

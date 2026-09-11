@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkKeyStatus, getRankByPuuid, RiotApiError } from "@/lib/riot";
+import { checkNewKeyStatus, getRankByPuuid, RiotApiError } from "@/lib/riot";
 import { getLimiter, snapshotKeys } from "@/lib/riot-limiter";
 import { isDbConfigured, query } from "@/lib/stats/db";
 import { allRiotKeys, getConfig, saveConfig } from "@/lib/store";
@@ -52,13 +52,8 @@ export async function POST(req: Request) {
       rejected.push({ hint: `...${key.slice(-4)}`, reason: "Đã có trong danh sách" });
       continue;
     }
-    getLimiter(key).reset();
-    let status = await checkKeyStatus(key, cfg.platform);
-    // key mới tạo có thể cần vài giây để kích hoạt
-    for (let i = 0; i < 2 && status !== "valid"; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
-      status = await checkKeyStatus(key, cfg.platform);
-    }
+    // key mới tạo có thể cần vài giây để kích hoạt (thêm hàng loạt nên ít nhịp hơn key chính)
+    const status = await checkNewKeyStatus(key, cfg.platform, 3, 1500);
     if (status === "valid") {
       added.push(key);
       existing.add(key);

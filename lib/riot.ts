@@ -325,6 +325,32 @@ export async function checkKeyStatus(apiKey: string, platform: string): Promise<
   }
 }
 
+/**
+ * Kiểm tra key khi NGƯỜI DÙNG VỪA DÁN KEY VÀO: thử lại vài nhịp vì key vừa tạo trên portal Riot
+ * thường trả 403 trong vài giây đầu (chưa kích hoạt xong).
+ *
+ * Điểm mấu chốt là `reset()` TRƯỚC MỖI NHỊP: một lần 403 sẽ đặt cờ chặn 10 phút lên key, và
+ * riotFetch cố tình trả 401 ngay cho key đang bị chặn (không gọi Riot nữa) — không xoá cờ thì
+ * các nhịp sau chỉ hỏi lại chính cái cờ đó, vòng thử lại thành vô dụng và key mới tinh vẫn bị
+ * báo "Riot từ chối". Mọi đường thêm key phải đi qua hàm này thay vì tự viết vòng lặp.
+ */
+export async function checkNewKeyStatus(
+  apiKey: string,
+  platform: string,
+  attempts = 5,
+  delayMs = 2000
+): Promise<KeyStatus> {
+  const limiter = getLimiter(apiKey);
+  let status: KeyStatus = "error";
+  for (let i = 0; i < attempts; i++) {
+    if (i > 0) await sleep(delayMs);
+    limiter.reset();
+    status = await checkKeyStatus(apiKey, platform);
+    if (status === "valid") return status;
+  }
+  return status;
+}
+
 /** Map platform routing -> region slug dùng trong URL của op.gg. */
 const OPGG_REGION: Record<string, string> = {
   na1: "na",
